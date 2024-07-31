@@ -1,0 +1,28 @@
+REM Author: Pentestersploit/Adrilaw
+REM Github: https://github.com/Adrilaw
+REM Xda-developer: @Kidpentester
+REM Title: Makes windows pc talk 
+REM Description: Opens a powershell to make pc speak 
+REM Target: Windows 10/11
+REM Version: 1.2
+
+REM Open PowerShell
+GUI r
+DELAY 500
+STRING powershell
+ENTER
+DELAY 500
+
+REM Type the message to be spoken
+DELAY 800
+STRING Add-Type -AssemblyName System.Speech
+ENTER
+DELAY 750
+STRING $speak = New-Object System.Speech.Synthesis.SpeechSynthesizer
+ENTER
+DELAY 750
+STRING $speak.Speak("<replace with your text>.")
+ENTER
+DELAY 750
+STRING exit
+ENTER
