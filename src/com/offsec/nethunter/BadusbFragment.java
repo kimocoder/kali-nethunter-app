@@ -25,6 +25,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 
+
 public class BadusbFragment extends Fragment {
     private String sourcePath;
     private static final String ARG_SECTION_NUMBER = "section_number";
@@ -119,38 +120,33 @@ public class BadusbFragment extends Fragment {
 
     private void updateOptions() {
         String sourceFile = exe.ReadFile_SYNC(sourcePath);
-        View view = getView();
-        if (view != null) {
-            EditText ifc = view.findViewById(R.id.ifc);
-            sourceFile = sourceFile.replaceAll("(?m)^INTERFACE=(.*)$", "INTERFACE=" + ifc.getText().toString());
-            boolean r = exe.SaveFileContents(sourceFile, sourcePath);
-            if (r) {
-                NhPaths.showMessage(context, "Options updated!");
-            } else {
-                NhPaths.showMessage(context, "Options not updated!");
-            }
+        EditText ifc = activity.findViewById(R.id.ifc);
+        sourceFile = sourceFile.replaceAll("(?m)^INTERFACE=(.*)$", "INTERFACE=" + ifc.getText().toString());
+        boolean r = exe.SaveFileContents(sourceFile, sourcePath);// 1st arg contents, 2nd arg filepath
+        if (r) {
+            NhPaths.showMessage(context,"Options updated!");
+        } else {
+            NhPaths.showMessage(context,"Options not updated!");
         }
     }
 
     private void start() {
+        ShellExecuter exe = new ShellExecuter();
         String[] command = new String[1];
         if (Build.VERSION.SDK_INT >= 21) {
             command[0] = NhPaths.APP_SCRIPTS_PATH + "/start-badusb-lollipop &> " + NhPaths.APP_SD_FILES_PATH + "/badusb.log &";
         }
         exe.RunAsRoot(command);
-        NhPaths.showMessage(context, "BadUSB attack started! Check /sdcard/nh_files/badusb.log");
+        NhPaths.showMessage(context,"BadUSB attack started! Check /sdcard/nh_files/badusb.log");
     }
 
     private void stop() {
+        ShellExecuter exe = new ShellExecuter();
         String[] command = new String[1];
         if (Build.VERSION.SDK_INT >= 21) {
             command[0] = NhPaths.APP_SCRIPTS_PATH + "/stop-badusb-lollipop";
         }
         exe.RunAsRoot(command);
-        NhPaths.showMessage(context, "BadUSB attack stopped!");
-    }
-
-    public void updateOptions(View view) {
-        updateOptions();
+        NhPaths.showMessage(context,"BadUSB attack stopped!");
     }
 }
