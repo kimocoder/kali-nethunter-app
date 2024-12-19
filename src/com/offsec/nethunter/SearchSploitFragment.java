@@ -39,14 +39,13 @@ import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
 import androidx.fragment.app.Fragment;
 
-
 public class SearchSploitFragment extends Fragment {
     public static final String TAG = "SearchSploitFragment";
     private static final String ARG_SECTION_NUMBER = "section_number";
     private Boolean withFilters = true;
     private String sel_type;
     private String sel_platform;
-    private String sel_search = "";
+    private String sel_search;
     private TextView numex;
     private AlertDialog adi;
     private Boolean isLoaded = false;
@@ -123,14 +122,12 @@ public class SearchSploitFragment extends Fragment {
                         NhPaths.showMessage_long(context, "DB FEED DONE");
                         try {
                             // Search List
-                            String sd = Environment.getExternalStorageDirectory().getPath();
-                            String data = NhPaths.APP_PATH + "/";
+                            String data = NhPaths.APP_PATH + "/databases/";
+                            String sd = Environment.getExternalStorageDirectory().getPath() + "/nh_files/";
                             String DATABASE_NAME = "SearchSploit";
-                            String currentDBPath = "databases/" + DATABASE_NAME;
-                            String backupDBPath = "/nh_files/" + DATABASE_NAME; // From SD directory.
 
-                            File backupDB = new File(data, currentDBPath);
-                            File currentDB = new File(sd, backupDBPath);
+                            File backupDB = new File(data, DATABASE_NAME);
+                            File currentDB = new File(sd, DATABASE_NAME);
 
                             FileChannel src = new FileInputStream(currentDB).getChannel();
                             FileChannel dst = new FileOutputStream(backupDB).getChannel();
@@ -154,7 +151,6 @@ public class SearchSploitFragment extends Fragment {
         //prevents menu stuck
         new android.os.Handler().postDelayed(
                 () -> main(rootView), 250);
-
 
         return rootView;
     }
@@ -344,7 +340,7 @@ class ExploitLoader extends BaseAdapter {
             vH.description = convertView.findViewById(R.id.description);
             // vH.cwSwich = (Switch) convertView.findViewById(R.id.switch1);
             vH.type = convertView.findViewById(R.id.type);
-	        vH.platform = convertView.findViewById(R.id.platform);
+            vH.platform = convertView.findViewById(R.id.platform);
             vH.author = convertView.findViewById(R.id.author);
             vH.date = convertView.findViewById(R.id.exploit_date);
             vH.viewSource = convertView.findViewById(R.id.viewSource);
@@ -373,7 +369,7 @@ class ExploitLoader extends BaseAdapter {
         // set service name
         vH.description.setText(_desc);
         vH.type.setText(_type);
-	    vH.platform.setText(_platform);
+        vH.platform.setText(_platform);
         vH.author.setText(_author);
         vH.date.setText(_date);
         vH.viewSource.setOnClickListener(v -> {

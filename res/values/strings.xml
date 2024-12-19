@@ -297,7 +297,7 @@
     <string name="drawertitlesearchsploit">SearchSploit</string>
     <string name="drawertitlepineapple">Pineapple Connector</string>
     <string name="drawertitlegps">Wardriving</string>
-    <string name="drawertitledeauth">DeAuth</string>
+    <string name="drawertitledeauth">WiFite2</string>
     <string name="drawertitlesettings">Settings</string>
     <string name="drawertitlekernel">Kernel</string>
     <string name="drawertitlemodules">Modules</string>
@@ -422,6 +422,13 @@
     <string name="nmap_udpscan">UDP Scan</string>
     <!-- End NMAP -->
 
+    <!-- Drawable Icons -->
+    <string name="mtrl_checkbox_button_icon_path_indeterminate">M10,10 L20,20</string>
+    <string name="mtrl_checkbox_button_icon_path_checked">M10,10 L20,20</string>
+    <string name="mtrl_switch_thumb_path_pressed">M10,10 L20,20</string>
+    <string name="mtrl_switch_thumb_path_checked">M10,10 L20,20</string>
+    <string name="mtrl_switch_thumb_path_morphing">M10,10 L20,20</string>
+    <string name="mtrl_switch_thumb_path_unchecked">M10,10 L20,20</string>
 
     <!-- Start PineappleFragment -->
     <string name="pineapple_description">The pineapple connector is used in conjunction with the Hak5 Pineapple Nano and a USB OTG cable.   This helper will connect the Pineapple Nano over ethernet and upstream your wifi connection.</string>
@@ -444,18 +451,12 @@
     <string name="switch_gpsd">gpsd in chroot</string>
     <string name="gps_button_launch_app">Launch %s in NH Terminal</string>
     <string name="gps_description">Converts your GPS to NMEA then provides to Kali chroot. Perfect for wardriving with Kismet or just a generic GPS server for Kali. Select your desired datasources. Make sure your wireless interface is in monitor mode before starting Kismet. Internal wireless interfaces can also be used thanks to the monitor mode by QCACLD-3.0 driver.</string>
-    <string name="gps_help">You may need to give Nethunter permissions to GPS. Go to Settings > Apps > Nethunter > Permissions.</string>
+    <string name="gps_help">You may need to give NetHunter permissions to GPS. Go to Settings > Apps > NetHunter > Permissions.</string>
     <string name="loading_wait">Loading wait…</string>
     <string name="loading_file">Loading…  FILE: %s</string>
     <string name="scanButtonText">Scan</string>
     <string name="advancedOptionsSwitchText">Advanced Options</string>
-    <string name="edit_whitelist_file">Edit whitelist file.</string>
-    <string name="type_wlan_interface">Type wlan interface</string>
     <string name="scan_networks">Scan Networks</string>
-    <string name="channel">Channel</string>
-    <string name="whitelist">Whitelist</string>
-    <string name="deauthenticate_anyone_besides_me">Deauthenticate anyone besides me</string>
-    <string name="start_deauthentication">Start Deauthentication :)</string>
     <string name="objects_to_inject">Objects to Inject</string>
     <string name="inject_characteristics">Inject Characteristics</string>
     <string name="shellshock_command">Shellshock command</string>
@@ -466,7 +467,6 @@
     <string name="gps_notification_source">"Source: "</string>
     <string name="gps_notification_age">"Age: "</string>
     <string name="gps_notification_sats">"Sats: "</string>
-
     <!-- End GPSFragment -->
 
     <!--Notification Channel-->
@@ -552,4 +552,27 @@
     <string name="builderinfo">IamCOD3X</string>
     <string name="build_version">1.0</string>
     <string name="moduleInfo">Module Based on PulseDroid by dront78</string>
+    <string name="sort">Sort</string>
+    <string name="show_networks">Show</string>
+    <string name="clear">Clear</string>
+
+    <!-- NetHunter WiFi -->
+    <string name="wifi_bottom_navigation_home">Scan</string>
+    <string name="wifi_bottom_navigation_attack">Attack</string>
+    <string name="wifi_bottom_navigation_crack">Crack</string>
+    <string name="settings">Settings</string>
+    <string name="clear2">Clear</string>
+    <string name="signal">Signal</string>
+    <string name="channel">Chan</string>
+    <string name="bssid2">BSSID</string>
+    <string name="encryption">Enc</string>
+    <string name="encryption2">Enc</string>
+    <string name="bssid3">BSSID</string>
+    <string name="channel2">Chan</string>
+    <string name="signal2">Signal</string>
+    <string name="apply">Apply</string>
+    <string name="cancel2">Cancel</string>
+    <string name="sort_networks">Sort networks by:</string>
+    <string name="show_networks_without_ssid">Show networks without SSID</string>
+    <string name="wifite2_settings">WiFite2 Settings</string>
 </resources>

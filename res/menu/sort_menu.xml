@@ -1,0 +1,11 @@
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:id="@+id/sort_by_signal"
+        android:title="Sort by signal" />
+    <item
+        android:id="@+id/sort_by_channel"
+        android:title="Sort by channel" />
+    <item
+        android:id="@+id/sort_by_name"
+        android:title="Sort by name" />
+</menu>

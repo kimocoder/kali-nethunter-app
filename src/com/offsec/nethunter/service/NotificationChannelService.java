@@ -1,5 +1,6 @@
 package com.offsec.nethunter.service;
 
+
 import android.Manifest;
 import android.app.IntentService;
 import android.app.NotificationChannel;
@@ -10,8 +11,10 @@ import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.IBinder;
 
+import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.RequiresApi;
+import androidx.core.app.ActivityCompat;
 import androidx.core.app.NotificationCompat;
 import androidx.core.app.NotificationManagerCompat;
 import androidx.core.app.TaskStackBuilder;
@@ -71,18 +74,28 @@ public class NotificationChannelService extends IntentService {
                     case REMINDMOUNTCHROOT:
                         builder = new NotificationCompat.Builder(getApplicationContext(), CHANNEL_ID)
                                 .setAutoCancel(true)
-                                .setSmallIcon(R.drawable.ic_stat_ic_nh_notificaiton)
+                                .setSmallIcon(R.drawable.ic_stat_ic_nh_notification)
                                 .setStyle(new NotificationCompat.BigTextStyle().bigText("Please open nethunter app and navigate to ChrootManager to setup your KaliChroot."))
                                 .setContentTitle("KaliChroot is not up or installed")
                                 .setContentText("Please navigate to ChrootManager to setup your KaliChroot.")
                                 .setPriority(NotificationCompat.PRIORITY_MAX)
                                 .setContentIntent(resultPendingIntent);
+                        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                            // TODO: Consider calling
+                            //    ActivityCompat#requestPermissions
+                            // here to request the missing permissions, and then overriding
+                            //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
+                            //                                          int[] grantResults)
+                            // to handle the case where the user grants the permission. See the documentation
+                            // for ActivityCompat#requestPermissions for more details.
+                            return;
+                        }
                         notificationManagerCompat.notify(NOTIFY_ID, builder.build());
                         break;
                     case USENETHUNTER:
                         builder = new NotificationCompat.Builder(getApplicationContext(), CHANNEL_ID)
                                 .setAutoCancel(true)
-                                .setSmallIcon(R.drawable.ic_stat_ic_nh_notificaiton)
+                                .setSmallIcon(R.drawable.ic_stat_ic_nh_notification)
                                 .setTimeoutAfter(10000)
                                 .setStyle(new NotificationCompat.BigTextStyle().bigText("Happy hunting!"))
                                 .setContentTitle("KaliChroot is UP!")
@@ -104,7 +117,7 @@ public class NotificationChannelService extends IntentService {
                     case DOWNLOADING:
                         builder = new NotificationCompat.Builder(getApplicationContext(), CHANNEL_ID)
                                 .setAutoCancel(true)
-                                .setSmallIcon(R.drawable.ic_stat_ic_nh_notificaiton)
+                                .setSmallIcon(R.drawable.ic_stat_ic_nh_notification)
                                 .setTimeoutAfter(15000)
                                 .setStyle(new NotificationCompat.BigTextStyle().bigText("Please don't kill the app or the download will be cancelled!"))
                                 .setContentTitle("Downloading Chroot!")
@@ -116,7 +129,7 @@ public class NotificationChannelService extends IntentService {
                     case INSTALLING:
                         builder = new NotificationCompat.Builder(getApplicationContext(), CHANNEL_ID)
                                 .setAutoCancel(true)
-                                .setSmallIcon(R.drawable.ic_stat_ic_nh_notificaiton)
+                                .setSmallIcon(R.drawable.ic_stat_ic_nh_notification)
                                 .setTimeoutAfter(15000)
                                 .setStyle(new NotificationCompat.BigTextStyle().bigText("Please don't kill the app as it will still keep running on the background! Otherwise you'll need to kill the tar process by yourself."))
                                 .setContentTitle("Installing Chroot")
@@ -128,7 +141,7 @@ public class NotificationChannelService extends IntentService {
                     case BACKINGUP:
                         builder = new NotificationCompat.Builder(getApplicationContext(), CHANNEL_ID)
                                 .setAutoCancel(true)
-                                .setSmallIcon(R.drawable.ic_stat_ic_nh_notificaiton)
+                                .setSmallIcon(R.drawable.ic_stat_ic_nh_notification)
                                 .setTimeoutAfter(15000)
                                 .setStyle(new NotificationCompat.BigTextStyle().bigText("Please don't kill the app as it will still keep running on the background! Otherwise you'll need to kill the tar process by yourself."))
                                 .setContentTitle("Creating KaliChroot backup to local storage.")
@@ -140,7 +153,7 @@ public class NotificationChannelService extends IntentService {
                     case CUSTOMCOMMAND_START:
                         builder = new NotificationCompat.Builder(getApplicationContext(), CHANNEL_ID)
                                 .setAutoCancel(false)
-                                .setSmallIcon(R.drawable.ic_stat_ic_nh_notificaiton)
+                                .setSmallIcon(R.drawable.ic_stat_ic_nh_notification)
                                 .setStyle(new NotificationCompat.BigTextStyle().bigText(
                                         "Command: \"" + intent.getStringExtra("CMD") +
                                         "\" is being run in background and in " +
@@ -157,19 +170,10 @@ public class NotificationChannelService extends IntentService {
                     case CUSTOMCOMMAND_FINISH:
                         final int returnCode = intent.getIntExtra("RETURNCODE", 0);
                         final String CMD = intent.getStringExtra("CMD");
-                        String resultString = "";
-                        if (returnCode == CustomCommandsAsyncTask.ANDROID_CMD_SUCCESS) {
-                            resultString = "Return success.\nCommand: \"" + CMD + "\" has been executed in android environment.";
-                        } else if (returnCode == CustomCommandsAsyncTask.ANDROID_CMD_FAIL) {
-                            resultString = "Return error.\nCommand: \"" + CMD + "\" has been executed in android environment.";
-                        } else if (returnCode == CustomCommandsAsyncTask.KALI_CMD_SUCCESS) {
-                            resultString = "Return success.\nCommand: \"" + CMD + "\" has been executed in Kali chroot environment.";
-                        } else if (returnCode == CustomCommandsAsyncTask.KALI_CMD_FAIL) {
-                            resultString = "Return error.\nCommand: \"" + CMD + "\" has been executed in Kali chroot environment.";
-                        }
+                        String resultString = getResultString(returnCode, CMD);
                         builder = new NotificationCompat.Builder(getApplicationContext(), CHANNEL_ID)
                                 .setAutoCancel(false)
-                                .setSmallIcon(R.drawable.ic_stat_ic_nh_notificaiton)
+                                .setSmallIcon(R.drawable.ic_stat_ic_nh_notification)
                                 .setStyle(new NotificationCompat.BigTextStyle().bigText(resultString))
                                 .setContentTitle("Custom Commands")
                                 .setContentText(resultString)
@@ -180,6 +184,21 @@ public class NotificationChannelService extends IntentService {
                 }
             }
         }
+    }
+
+    @NonNull
+    private static String getResultString(int returnCode, String CMD) {
+        String resultString = "";
+        if (returnCode == CustomCommandsAsyncTask.ANDROID_CMD_SUCCESS) {
+            resultString = "Return success.\nCommand: \"" + CMD + "\" has been executed in android environment.";
+        } else if (returnCode == CustomCommandsAsyncTask.ANDROID_CMD_FAIL) {
+            resultString = "Return error.\nCommand: \"" + CMD + "\" has been executed in android environment.";
+        } else if (returnCode == CustomCommandsAsyncTask.KALI_CMD_SUCCESS) {
+            resultString = "Return success.\nCommand: \"" + CMD + "\" has been executed in Kali chroot environment.";
+        } else if (returnCode == CustomCommandsAsyncTask.KALI_CMD_FAIL) {
+            resultString = "Return error.\nCommand: \"" + CMD + "\" has been executed in Kali chroot environment.";
+        }
+        return resultString;
     }
 
     @Override

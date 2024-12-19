@@ -1,0 +1,11 @@
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:id="@+id/show_signal_strength"
+        android:title="Show/Hide Signal Strength" />
+    <item
+        android:id="@+id/show_channel"
+        android:title="Show/Hide Channel" />
+    <item
+        android:id="@+id/show_bssid"
+        android:title="Show/Hide BSSID" />
+</menu>

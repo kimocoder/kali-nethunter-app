@@ -20,7 +20,6 @@ class SearchSploitSQL extends SQLiteOpenHelper {
     private static final String DATABASE_NAME = "SearchSploit";
     SearchSploitSQL(Context context) {
         super(context, DATABASE_NAME, null, DATABASE_VERSION);
-
     }
 
     public void onCreate(SQLiteDatabase database) {
@@ -57,9 +56,8 @@ class SearchSploitSQL extends SQLiteOpenHelper {
         String _cmd1 = "su -c " + NhPaths.APP_SCRIPTS_PATH + "/bootkali custom_cmd 'usr/bin/python3 /sdcard/nh_files/modules/csv2sqlite.py /usr/share/exploitdb/files_exploits.csv /tmp/SearchSploit " + SearchSploit.TABLE + "'";
         exe.RunAsRootOutput(_cmd1);
         // Then move it to app db folder
-        String _cmd2 = "mv " + NhPaths.CHROOT_SYMLINK_PATH + "/tmp/SearchSploit /sdcard/nh_files/SearchSploit";
+        String _cmd2 = "mv " + NhPaths.CHROOT_SYMLINK_PATH + "/tmp/SearchSploit " + NhPaths.APP_PATH + "/databases/SearchSploit";
         exe.RunAsRootOutput(_cmd2);
-
         return true;
     }
 
@@ -125,7 +123,6 @@ class SearchSploitSQL extends SQLiteOpenHelper {
         cursor.close();
         return commandList;
     }
-
 
     List<String> getTypes() {
         String query = "SELECT DISTINCT " + SearchSploit.TYPE +

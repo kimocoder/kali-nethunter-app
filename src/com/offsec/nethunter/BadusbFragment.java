@@ -15,6 +15,7 @@ import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.EditText;
 
+import com.google.android.material.button.MaterialButton;
 import com.offsec.nethunter.utils.NhPaths;
 import com.offsec.nethunter.utils.ShellExecuter;
 
@@ -62,6 +63,14 @@ public class BadusbFragment extends Fragment {
         button.setOnClickListener(v -> updateOptions());
         setHasOptionsMenu(true);
         return rootView;
+    }
+
+    @Override
+    public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
+        super.onViewCreated(view, savedInstanceState);
+
+        MaterialButton updateOptionsButton = view.findViewById(R.id.updateOptions);
+        updateOptionsButton.setOnClickListener(v -> updateOptions());
     }
 
     @Override

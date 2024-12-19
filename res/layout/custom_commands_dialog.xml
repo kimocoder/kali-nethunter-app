@@ -19,7 +19,6 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/add_lauchner_btn_label"
-
                 android:textAppearance="?android:attr/textAppearanceLarge"
                 android:textColor="@android:color/white" />
 
@@ -29,14 +28,12 @@
 
                 android:layout_height="wrap_content"
                 android:textColor="@android:color/white">
-
                 <requestFocus />
             </EditText>
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-
                 android:text="@string/add_lauchner_btn_command"
                 android:textAppearance="?android:attr/textAppearanceLarge"
                 android:textColor="@android:color/white" />
@@ -44,7 +41,6 @@
             <EditText
                 android:id="@+id/editText_launcher_command"
                 android:layout_width="match_parent"
-
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="10dp"
                 android:textColor="@android:color/white" />
@@ -52,8 +48,7 @@
             <RelativeLayout
                 android:orientation="horizontal"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                >
+                android:layout_height="wrap_content">
 
                 <TextView
                     android:id="@+id/run_in_shell_text"
@@ -65,7 +60,6 @@
                     android:text="Send to:"
                     android:textAppearance="?android:attr/textAppearanceLarge"
                     android:textColor="@android:color/white" />
-
 
                 <TextView
                     android:id="@+id/add_lauchner_btn_execmode_text"
@@ -90,17 +84,16 @@
                     android:layout_alignParentEnd="true"
                     android:layout_toEndOf="@+id/run_in_shell_text"
                     android:layout_alignStart="@+id/spinnerExecMode" />
+
                 <Spinner
                     android:id="@+id/spinnerExecMode"
                     android:layout_width="fill_parent"
                     android:layout_height="wrap_content"
                     android:drawSelectorOnTop="true"
                     android:entries="@array/exec_mode"
-
                     android:paddingTop="10dp"
                     android:layout_below="@+id/spinnerRun_in_shell"
                     android:layout_toEndOf="@+id/add_lauchner_btn_execmode_text" />
-
             </RelativeLayout>
 
             <RelativeLayout
@@ -129,9 +122,6 @@
                     android:layout_alignParentTop="true"
                     android:layout_toEndOf="@+id/textView10" />
             </RelativeLayout>
-
         </LinearLayout>
     </ScrollView>
-
-
 </LinearLayout>

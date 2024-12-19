@@ -13,4 +13,7 @@
     <item name="colorPrimaryDark" type="color">#21272B</item>
     <item name="colorAccent" type="color">#45738C</item>
     <item name="textColor" type="color">#FFFFFF</item>
+
+    <color name="selector_bottom_navigation">#FF0000</color>
+    <color name="white">#FFFFFF</color>
 </resources>

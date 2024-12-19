@@ -4,6 +4,7 @@ buildscript {
     repositories {
         mavenCentral()
         google()
+        maven { url 'https://repo.grails.org/grails/core' }
     }
     dependencies {
         classpath 'com.android.tools.build:gradle:7.4.2'
@@ -11,8 +12,9 @@ buildscript {
 }
 
 repositories {
+    maven { url 'https://repo.grails.org/grails/core' }
     mavenCentral()
-    maven { url "https://maven.google.com" }
+    maven { url 'https://maven.google.com' }
     // Snowfall
     maven { url 'https://jitpack.io' }
     google()
@@ -97,13 +99,25 @@ dependencies {
     implementation 'androidx.appcompat:appcompat:1.6.1'
     implementation 'com.google.android.material:material:1.6.1'
     implementation 'androidx.preference:preference:1.2.1'
+    implementation 'androidx.swiperefreshlayout:swiperefreshlayout:1.2.0-alpha01'
+    implementation 'androidx.recyclerview:recyclerview:1.2.1'
     // Snowfall
     implementation 'com.github.jetradarmobile:android-snowfall:1.2.1'
     // debugImplementation because LeakCanary should only run in debug builds.
     debugImplementation 'com.squareup.leakcanary:leakcanary-android:3.0-alpha-8'
 }
 
+// Set the desired JAVA (Gradle) and Android (Android Gradle Plugin) version. Searches for for JDK in JAVA_HOME and java.home.
+def jdkHome = System.getenv("JAVA_HOME") ?: System.getProperty("java.home")
+if (jdkHome) {
+    println "Using JDK from: $jdkHome"
+    gradle.properties["org.gradle.java.home"] = jdkHome
+} else {
+    throw new GradleException("JAVA_HOME environment variable or java.home system property must be set")
+}
+
 java {
-    sourceCompatibility = JavaVersion.VERSION_1_8
-    targetCompatibility = JavaVersion.VERSION_1_8
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(17) // Specify the desired Java version
+    }
 }

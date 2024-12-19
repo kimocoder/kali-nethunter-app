@@ -1,0 +1,7 @@
+<resources>
+    <string-array name="dropdown_options">
+        <item>Name</item>
+        <item>Signal</item>
+        <item>Encryption</item>
+    </string-array>
+</resources>

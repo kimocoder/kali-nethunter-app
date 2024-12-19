@@ -23,7 +23,6 @@ import android.view.MenuItem;
 import android.view.View;
 import android.widget.LinearLayout;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
@@ -96,8 +95,8 @@ public class AppNavHomeActivity extends AppCompatActivity implements KaliGPSUpda
         // Also with its sharepreference listener registered, the CHROOT_PATH variable can be updated immediately on sharepreference changes.
         nhPaths = NhPaths.getInstance(getApplicationContext());
 
-        // We need to run root check here so nothing else dosent pile up with dialogs
-        if (!CheckForRoot.isRoot()){
+        // We need to run root check here so nothing else doesn't pile up with dialogs
+        if (!CheckForRoot.isRoot()) {
             showWarningDialog("Root permission", "Root permission is required!!", false);
         }
 
@@ -196,7 +195,6 @@ public class AppNavHomeActivity extends AppCompatActivity implements KaliGPSUpda
         }
     }
 
-
     @Override
     public boolean onOptionsItemSelected(@NonNull MenuItem item) {
         if (mDrawerToggle.onOptionsItemSelected(item)) {
@@ -285,9 +283,7 @@ public class AppNavHomeActivity extends AppCompatActivity implements KaliGPSUpda
             if (locationUpdatesRequested) {
                 locationService.requestUpdates(locationUpdateReceiver);
             }
-
         }
-
         public void onServiceDisconnected(ComponentName arg0) {
             updateServiceBound = false;
         }
@@ -434,7 +430,7 @@ public class AppNavHomeActivity extends AppCompatActivity implements KaliGPSUpda
                 .replace(R.id.container, NetHunterFragment.newInstance(R.id.nethunter_item))
                 .commit();
             // and put the title in the queue for when you need to back through them
-            titles.push(navigationView.getMenu().getItem(0).getTitle().toString());
+            titles.push(Objects.requireNonNull(navigationView.getMenu().getItem(0).getTitle()).toString());
             // disable all fragment first until it passes the compat check.
             navigationView.getMenu().setGroupEnabled(R.id.chrootDependentGroup, false);
        // }
@@ -484,7 +480,6 @@ public class AppNavHomeActivity extends AppCompatActivity implements KaliGPSUpda
         }
         ad.show();
         ((TextView) Objects.requireNonNull(ad.findViewById(android.R.id.message))).setMovementMethod(LinkMovementMethod.getInstance());
-
     }
 
     @SuppressLint("NonConstantResourceId")
@@ -503,13 +498,13 @@ public class AppNavHomeActivity extends AppCompatActivity implements KaliGPSUpda
                     menuItem.setChecked(true);
                     mDrawerLayout.closeDrawers();
                     mTitle = menuItem.getTitle();
+                    assert mTitle != null;
                     titles.push(mTitle.toString());
 
                     int itemId = menuItem.getItemId();
                     changeDrawer(itemId);
                     restoreActionBar();
                     return true;
-
                 });
     }
     private void setupDrawerContentWear(NavigationView navigationViewWear) {
@@ -527,13 +522,13 @@ public class AppNavHomeActivity extends AppCompatActivity implements KaliGPSUpda
                     menuItem.setChecked(true);
                     mDrawerLayout.closeDrawers();
                     mTitle = menuItem.getTitle();
+                    assert mTitle != null;
                     titles.push(mTitle.toString());
 
                     int itemId = menuItem.getItemId();
                     changeDrawer(itemId);
                     restoreActionBar();
                     return true;
-
                 });
     }
 
@@ -553,7 +548,7 @@ public class AppNavHomeActivity extends AppCompatActivity implements KaliGPSUpda
                             break;
                         */
                         case R.id.deauth_item:
-                            changeFragment(fragmentManager, DeAuthFragment.newInstance(itemId));
+                            changeFragment(fragmentManager, WifiScannerFragment.newInstance(itemId));
                             break;
                         case R.id.kaliservices_item:
                             changeFragment(fragmentManager, KaliServicesFragment.newInstance(itemId));
@@ -643,7 +638,7 @@ public class AppNavHomeActivity extends AppCompatActivity implements KaliGPSUpda
         }
     }
 
-    public void blockActionBar(){
+    public void blockActionBar() {
         ActionBar ab = getSupportActionBar();
         if (ab != null) {
             ab.setHomeButtonEnabled(false);
@@ -672,7 +667,7 @@ public class AppNavHomeActivity extends AppCompatActivity implements KaliGPSUpda
                 .commit();
     }
 
-    private boolean isAllRequiredPermissionsGranted(){
+    private boolean isAllRequiredPermissionsGranted() {
         if (!permissionCheck.isAllPermitted(PermissionCheck.DEFAULT_PERMISSIONS)) {
             permissionCheck.checkPermissions(PermissionCheck.DEFAULT_PERMISSIONS, PermissionCheck.DEFAULT_PERMISSION_RQCODE);
             return false;
@@ -696,7 +691,7 @@ public class AppNavHomeActivity extends AppCompatActivity implements KaliGPSUpda
         warningAD.create().show();
     }
 
-    // Main app broadcastRecevier to response for different actions.
+    // Main app broadcastReceiver to response for different actions.
     public class NethunterReceiver extends BroadcastReceiver{
         public static final String CHECKCOMPAT = BuildConfig.APPLICATION_ID + ".CHECKCOMPAT";
         public static final String BACKPRESSED = BuildConfig.APPLICATION_ID + ".BACKPRESSED";
@@ -744,4 +739,3 @@ public class AppNavHomeActivity extends AppCompatActivity implements KaliGPSUpda
         }
     }
 }
-

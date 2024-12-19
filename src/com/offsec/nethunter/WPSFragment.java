@@ -28,7 +28,6 @@ import com.offsec.nethunter.utils.ShellExecuter;
 
 import java.util.ArrayList;
 
-
 public class WPSFragment extends Fragment {
     public static final String TAG = "WPSFragment";
     private static final String ARG_SECTION_NUMBER = "section_number";
@@ -106,7 +105,7 @@ public class WPSFragment extends Fragment {
                 if (selected_target.equals("No nearby WPS networks") || selected_target.equals("Please reset the interface!")){
                     selected_network = "";
                 }
-                else selected_network = exe.RunAsRootOutput("echo \"" + selected_target + "\" | cut -d ';' -f 1");
+                else selected_network = selected_target.split(";")[0];
             }
             @Override
             public void onNothingSelected(AdapterView<?> parentView) {

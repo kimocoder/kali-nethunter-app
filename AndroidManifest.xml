@@ -2,13 +2,12 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
     package="com.offsec.nethunter">
-    
+
     <queries>
         <package android:name="com.offsec.nhterm" />
     </queries>
 
     <uses-permission android:name="android.permission.WRITE_SETTINGS" />
-    <uses-permission android:name="android.permission.WRITE_SECURE_SETTINGS" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.ACCESS_NOTIFICATION_POLICY" />
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
@@ -33,6 +32,7 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.BIND_ACCESSIBILITY_SERVICE"
         tools:ignore="ProtectedPermissions" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
     <permission-group android:name="${applicationId}.android.permission-group.SYSTEM_TOOLS" />
 
     <supports-screens
@@ -51,13 +51,18 @@
         android:theme="@style/Theme.Nethunter"
         android:windowSoftInputMode="adjustResize"
         android:requestLegacyExternalStorage="true"
+        android:allowBackup="true"
         tools:targetApi="n">
+
+        <!-- Conditionally include enableOnBackInvokedCallback for API 33 and above -->
         <activity
             android:name=".AppNavHomeActivity"
             android:configChanges="orientation|keyboardHidden|screenSize|keyboard"
             android:launchMode="singleTop"
             android:theme="@style/Theme.Nethunter"
-            android:exported="true">
+            android:exported="true"
+            tools:targetApi="33"
+            android:enableOnBackInvokedCallback="true">
             <intent-filter android:label="@string/app_nav_home_label">
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
@@ -83,15 +88,6 @@
             <meta-data
                 android:name="android.support.PARENT_ACTIVITY"
                 android:value=".EditSourceActivity" />
-        </activity>
-        <activity
-            android:name=".DeAuthWhitelistActivity"
-            android:label="Edit whitelist"
-            android:theme="@style/Theme.Nethunter"
-            android:windowSoftInputMode="stateHidden">
-            <meta-data
-                android:name="android.support.PARENT_ACTIVITY"
-                android:value=".DeAuthWhitelistActivity" />
         </activity>
 
         <receiver android:name=".receiver.BootCompletedReceiver"

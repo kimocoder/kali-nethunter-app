@@ -33,15 +33,14 @@
         <EditText
             android:id="@+id/ifc"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
+            android:layout_height="48dp"
+            android:autofillHints="none"
             android:ems="10"/>
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/updateOptions"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:onClick="updateOptions"
             android:text="@string/update" />
-
     </LinearLayout>
 </ScrollView>

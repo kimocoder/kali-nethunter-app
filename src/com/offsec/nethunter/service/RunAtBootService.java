@@ -23,7 +23,7 @@ import java.util.Map;
 
 
 public class RunAtBootService extends JobIntentService {
-    private static final String TAG = "Nethunter: Startup";
+    private static final String TAG = "NetHunter: Startup";
     static final int SERVICE_JOB_ID = 1;
     private NotificationCompat.Builder n = null;
     private SharedPreferences sharedPreferences;
@@ -43,7 +43,7 @@ public class RunAtBootService extends JobIntentService {
         }
         n.setStyle(new NotificationCompat.BigTextStyle().bigText(contents))
                 .setContentTitle(RunAtBootService.TAG)
-                .setSmallIcon(R.drawable.ic_stat_ic_nh_notificaiton)
+                .setSmallIcon(R.drawable.ic_stat_ic_nh_notification)
                 .setAutoCancel(true);
         NotificationManager notificationManager =
                 (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
