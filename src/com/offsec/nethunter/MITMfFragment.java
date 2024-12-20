@@ -18,7 +18,6 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.Spinner;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import com.offsec.nethunter.bridge.Bridge;
 import com.offsec.nethunter.databinding.MitmfGeneralBinding;
@@ -30,6 +29,7 @@ import com.offsec.nethunter.utils.ShellExecuter;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -39,8 +39,6 @@ import androidx.fragment.app.FragmentPagerAdapter;
 import androidx.viewpager.widget.ViewPager;
 
 public class MITMfFragment extends Fragment {
-
-
     View.OnClickListener checkBoxListener;
     private TabsPagerAdapter tabsPagerAdapter;
     public interface CommandProvider {
@@ -60,7 +58,6 @@ public class MITMfFragment extends Fragment {
     String M_Responder_NBTNS; // --nbtns
     String M_Responder_WPAD; // --wpad
     String M_Responder_WRedir; // --wredir
-
 
     private Context context;
     private static Activity activity;
@@ -103,7 +100,7 @@ public class MITMfFragment extends Fragment {
 
     /* Start execution menu */
     @Override
-    public void onCreateOptionsMenu(Menu menu, MenuInflater inflater) {
+    public void onCreateOptionsMenu(@NonNull Menu menu, MenuInflater inflater) {
         inflater.inflate(R.menu.mitmf, menu);
     }
 
@@ -142,8 +139,7 @@ public class MITMfFragment extends Fragment {
 
     //public static class TabsPagerAdapter extends FragmentPagerAdapter {
     private static class TabsPagerAdapter extends FragmentPagerAdapter {
-
-        private List<CommandProvider> commandProviders = new ArrayList<>(5);
+        private final List<CommandProvider> commandProviders = new ArrayList<>(5);
 
         TabsPagerAdapter(FragmentManager fm) {
             super(fm);
@@ -212,9 +208,7 @@ public class MITMfFragment extends Fragment {
         }
     }
     /* Stop Tabs */
-
     public static class MITMfGeneral extends Fragment implements CommandProvider {
-
         private ArrayAdapter<CharSequence> interfaceAdapter;
         private int interfaceSelection;
         private Context context;
@@ -276,12 +270,10 @@ public class MITMfFragment extends Fragment {
                     .append(generalBinding.mitmfScreenshotter.isChecked() ?
                             " --screen --interval " + generalBinding.mitmfScreenInterval.getText().toString() :
                             "");
-
         }
     }
 
     public static class MITMfInject extends Fragment implements CommandProvider {
-
         MitmfInjectBinding injectBinding;
         MITMFViewModel mViewModel = new MITMFViewModel();
 
@@ -293,17 +285,16 @@ public class MITMfFragment extends Fragment {
             return injectBinding.getRoot();
         }
 
-
         @Override
         public void getCommands(StringBuilder stringBuilder) {
             if (injectBinding.mitmfEnableinject.isChecked()) {
-                String injectRateSeconds = injectBinding.mitmfInjectRateseconds.getText().toString();
-                String injectTimes = injectBinding.mitmfInjectTimesText.getText().toString();
-                String injectJSURL = injectBinding.mitmfInjectjsUrl.getText().toString();
-                String injectHtmlUrl = injectBinding.mitmfInjecthtmlUrl.getText().toString();
-                String injectHtmlPay = injectBinding.mitmfInjecthtmlpayText.getText().toString();
-                String mitmfInjectIp = injectBinding.mitmfInjectIpText.getText().toString();
-                String injectNoIp = injectBinding.mitmfInjectNoipText.getText().toString();
+                String injectRateSeconds = Objects.requireNonNull(injectBinding.mitmfInjectRateseconds.getText()).toString();
+                String injectTimes = Objects.requireNonNull(injectBinding.mitmfInjectTimesText.getText()).toString();
+                String injectJSURL = Objects.requireNonNull(injectBinding.mitmfInjectjsUrl.getText()).toString();
+                String injectHtmlUrl = Objects.requireNonNull(injectBinding.mitmfInjecthtmlUrl.getText()).toString();
+                String injectHtmlPay = Objects.requireNonNull(injectBinding.mitmfInjecthtmlpayText.getText()).toString();
+                String mitmfInjectIp = Objects.requireNonNull(injectBinding.mitmfInjectIpText.getText()).toString();
+                String injectNoIp = Objects.requireNonNull(injectBinding.mitmfInjectNoipText.getText()).toString();
 
                 stringBuilder
                         .append(" --inject")
@@ -318,13 +309,10 @@ public class MITMfFragment extends Fragment {
                         .append(!injectNoIp.isEmpty() ? " --black-ips " + injectNoIp : "")
                 ;
             }
-
         }
     }
 
-
     public static class MITMfSpoof extends Fragment implements CommandProvider {
-
         private int spoofOption;
         private ArrayAdapter<CharSequence> redirectAdapter;
         private MitmfSpoofBinding spoofBinding;
@@ -345,7 +333,6 @@ public class MITMfFragment extends Fragment {
             viewModel = new MITMFViewModel();
             spoofBinding.setViewModel(viewModel);
 
-
             // Redirect Spinner
             final Spinner redirectSpinner = spoofBinding.mitmfSpoofRedirectspin;
             redirectAdapter = ArrayAdapter.createFromResource(context,
@@ -358,16 +345,13 @@ public class MITMfFragment extends Fragment {
                     String selectedItemText = parent.getItemAtPosition(pos).toString();
                     Log.d("Selected: ", selectedItemText);
                     spoofOption = pos;
-                    if (pos == 3) { /*dhcp*/
-                        viewModel.setShellShockEnabled(true);
-                    } else {
-                        viewModel.setShellShockEnabled(false);
-                    }
+                    /*dhcp*/
+                    viewModel.setShellShockEnabled(pos == 3);
                 }
 
                 @Override
                 public void onNothingSelected(AdapterView<?> parent) {
-                    //Another interface callback
+                    // Another interface callback
                 }
             });
 
@@ -389,8 +373,6 @@ public class MITMfFragment extends Fragment {
                     //Another interface callback
                 }
             });
-
-
             return spoofBinding.getRoot();
         }
 
@@ -414,21 +396,18 @@ public class MITMfFragment extends Fragment {
                     stringBuilder.append(" --arpmode rep");
                 }
 
-                String gateway = spoofBinding.mitmfSpoofGatewayText.getText().toString();
-                String targets = spoofBinding.mitmfSpoofTargetsText.getText().toString();
-                String shellShock = spoofBinding.mitmfSpoofShellshockText.getText().toString();
+                String gateway = Objects.requireNonNull(spoofBinding.mitmfSpoofGatewayText.getText()).toString();
+                String targets = Objects.requireNonNull(spoofBinding.mitmfSpoofTargetsText.getText()).toString();
+                String shellShock = Objects.requireNonNull(spoofBinding.mitmfSpoofShellshockText.getText()).toString();
                 stringBuilder.append(!gateway.isEmpty() ? " --gateway " + gateway : "")
                         .append(!targets.isEmpty() ? " --targets " + targets : "")
                         .append(spoofBinding.mitmfSpoofShellshock.isChecked() &&
                                 !shellShock.isEmpty() ? " --shellshock " + shellShock : "");
             }
-
         }
     }
 
-
     public static class MITMfResponder extends Fragment implements CommandProvider {
-
         private MitmfResponderBinding responderBinding;
 
         @Override
@@ -437,7 +416,6 @@ public class MITMfFragment extends Fragment {
             responderBinding = MitmfResponderBinding.inflate(inflater, container, false);
             MITMFViewModel viewModel = new MITMFViewModel();
             responderBinding.setViewModel(viewModel);
-
             return responderBinding.getRoot();
         }
 
@@ -478,7 +456,6 @@ public class MITMfFragment extends Fragment {
             TextView desc = rootView.findViewById(R.id.description);
             desc.setText(description);
 
-
             EditText source = rootView.findViewById(R.id.source);
             exe.ReadFile_ASYNC(configFilePath, source);
             Button button = rootView.findViewById(R.id.update);
@@ -495,11 +472,10 @@ public class MITMfFragment extends Fragment {
     }
 
     private static void cleanCmd() {
-        for (int j = CommandComposed.size() - 1; j >= 0; j--) {
-            CommandComposed.remove(j);
+        if (!CommandComposed.isEmpty()) {
+            CommandComposed.subList(0, CommandComposed.size()).clear();
         }
     }
-
 
     ////
     // Bridge side functions
