@@ -75,17 +75,16 @@ public class SettingsFragment extends Fragment {
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
-        return switch (item.getItemId()) {
-            case R.id.setup -> {
+        switch (item.getItemId()) {
+            case R.id.setup:
                 RunSetup();
-                yield true;
-            }
-            case R.id.update -> {
+                return true;
+            case R.id.update:
                 RunUpdate();
-                yield true;
-            }
-            default -> super.onOptionsItemSelected(item);
-        };
+                return true;
+            default:
+                return super.onOptionsItemSelected(item);
+        }
     }
 
     @Override
@@ -385,6 +384,7 @@ public class SettingsFragment extends Fragment {
 
         // Busybox
         TextView BusyboxVersion = rootView.findViewById(R.id.busybox_version);
+        // todo: /system/xbin hardcodes. This is not a good practice.
             String busybox_ver = exe.RunAsRootOutput("/system/xbin/busybox | head -n1 | cut -c 10-13");
             BusyboxVersion.setText(busybox_ver);
 
@@ -392,6 +392,7 @@ public class SettingsFragment extends Fragment {
 
         // Version Spinner
         Spinner busybox_spinner = rootView.findViewById(R.id.bb_spinner);
+        // todo: /system/xbin hardcodes. This is not a good practice.
         String commandBB = ("ls /system/xbin | grep busybox_nh- | cut -f 2 -d '-'");
         String outputBB = exe.RunAsRootOutput(commandBB);
         final String[] bbArray = outputBB.split("\n");
@@ -417,6 +418,7 @@ public class SettingsFragment extends Fragment {
         // Apply button
         final Button BusyboxButton = rootView.findViewById(R.id.select_bb);
         BusyboxButton.setOnClickListener( v -> {
+            // todo: these /system/xbin hardcodes have to go.
             File busybox = new File("/system/xbin/" + busybox_file[0]);
                 exe.RunAsRoot(new String[]{"if [ \"$(getprop ro.build.system_root_image)\" == \"true\" ]; then export SYSTEM=/; else export SYSTEM=/system;fi;mount -o rw,remount $SYSTEM && rm /system/xbin/busybox_nh;ln -s " + busybox + " /system/xbin/busybox_nh"});
                 Toast.makeText(requireActivity().getApplicationContext(), "NetHunter BusyBox version has been successfully modified", Toast.LENGTH_SHORT).show();
@@ -433,6 +435,7 @@ public class SettingsFragment extends Fragment {
             BusyboxSystemButton.setTextColor(Color.parseColor("#40FFFFFF"));
         }
         BusyboxSystemButton.setOnClickListener( v -> {
+                // todo: /system/xbin hardcodes. This is not a good practice.
                 exe.RunAsRoot(new String[]{"if [ \"$(getprop ro.build.system_root_image)\" == \"true\" ]; then export SYSTEM=/; else export SYSTEM=/system;fi;mount -o rw,remount $SYSTEM && rm /system/xbin/busybox;ln -s /system/xbin/busybox_nh /system/xbin/busybox"});
                 Toast.makeText(requireActivity().getApplicationContext(), "Default system BusyBox has been changed", Toast.LENGTH_SHORT).show();
         });
@@ -504,10 +507,9 @@ public class SettingsFragment extends Fragment {
 
     public void RunSetup() {
         sharedpreferences = activity.getSharedPreferences("com.offsec.nethunter", Context.MODE_PRIVATE);
-        run_cmd("""
-                echo -ne "\\033]0;Bootanimation Setup\\007" && clear;if [[ -f /usr/bin/convert ]];then echo 'Imagemagick is installed!'; else \
-                apt update && apt install imagemagick -y;fi; if [[ -f /root/nethunter-bootanimation ]];then echo 'Nethunter-bootanimation is installed!'; else \
-                git clone https://gitlab.com/kalilinux/nethunter/build-scripts/kali-nethunter-bootanimation /root/nethunter-bootanimation;fi; echo 'Everything is ready! Closing in 3secs..'; sleep 3 && exit\s""");
+        run_cmd("echo -ne \"\\033]0;Bootanimation Setup\\007\" && clear;if [[ -f /usr/bin/convert ]];then echo 'Imagemagick is installed!'; else " +
+                "apt update && apt install imagemagick -y;fi; if [[ -f /root/nethunter-bootanimation ]];then echo 'Nethunter-bootanimation is installed!'; else " +
+                "git clone https://gitlab.com/kalilinux/nethunter/build-scripts/kali-nethunter-bootanimation /root/nethunter-bootanimation;fi; echo 'Everything is ready! Closing in 3secs..'; sleep 3 && exit ");
         sharedpreferences.edit().putBoolean("animation_setup_done", true).apply();
     }
 
