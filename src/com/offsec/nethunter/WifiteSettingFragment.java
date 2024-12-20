@@ -11,7 +11,7 @@ import androidx.fragment.app.DialogFragment;
 import android.view.LayoutInflater;
 import android.view.View;
 
-public class WifiteSettingsDialogFragment extends DialogFragment {
+public class WifiteSettingFragment extends DialogFragment {
     public interface SettingsDialogListener {
         void onSettingsChanged(boolean showNetworksWithoutSSID);
     }
@@ -27,7 +27,7 @@ public class WifiteSettingsDialogFragment extends DialogFragment {
     public Dialog onCreateDialog(@Nullable Bundle savedInstanceState) {
         AlertDialog.Builder builder = new AlertDialog.Builder(requireActivity());
         LayoutInflater inflater = requireActivity().getLayoutInflater();
-        View view = inflater.inflate(R.layout.dialog_settings, null);
+        View view = inflater.inflate(R.layout.wifite_ui_settings, null);
 
         CheckBox checkboxOption = view.findViewById(R.id.checkbox_option);
         Button applyButton = view.findViewById(R.id.apply_button);

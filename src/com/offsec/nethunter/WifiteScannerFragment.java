@@ -52,7 +52,8 @@ import java.util.List;
 import java.util.Collections;
 import java.util.Objects;
 
-public class WifiScannerFragment extends Fragment implements WifiteSettingsDialogFragment.SettingsDialogListener {
+
+public class WifiteScannerFragment extends Fragment implements WifiteSettingFragment.SettingsDialogListener {
     private boolean showNetworksWithoutSSID = true;
     public static final String TAG = "WifiScannerFragment";
     private static final String ARG_SECTION_NUMBER = "section_number";
@@ -69,8 +70,8 @@ public class WifiScannerFragment extends Fragment implements WifiteSettingsDialo
     private int refreshInterval = 10000; // Default to 10 seconds
 
 
-    public static WifiScannerFragment newInstance(int sectionNumber) {
-        WifiScannerFragment fragment = new WifiScannerFragment();
+    public static WifiteScannerFragment newInstance(int sectionNumber) {
+        WifiteScannerFragment fragment = new WifiteScannerFragment();
         Bundle args = new Bundle();
         args.putInt(ARG_SECTION_NUMBER, sectionNumber);
         fragment.setArguments(args);
@@ -99,7 +100,7 @@ public class WifiScannerFragment extends Fragment implements WifiteSettingsDialo
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
-        View rootView = inflater.inflate(R.layout.wifi_scanner, container, false);
+        View rootView = inflater.inflate(R.layout.wifite_ui_scanner, container, false);
 
         // Initialize Toolbar
         Toolbar toolbar = rootView.findViewById(R.id.toolbar);
@@ -245,7 +246,6 @@ public class WifiScannerFragment extends Fragment implements WifiteSettingsDialo
         });
 
         // Set OnItemClickListener to hold selection
-        BottomNavigationView finalBottomNavigationView = bottomNavigationView;
         wifiNetworksList.setOnItemClickListener((parent, view, position, id) -> {
             for (int i = 0; i < parent.getChildCount(); i++) {
                 parent.getChildAt(i).setBackgroundColor(Color.TRANSPARENT); // Reset background color for all items
@@ -261,7 +261,7 @@ public class WifiScannerFragment extends Fragment implements WifiteSettingsDialo
             refreshIntervalSpinner.setSelection(0);
 
             // Enable the "Attack" menu item when a target is selected
-            finalBottomNavigationView.getMenu().findItem(R.id.navigation_dashboard).setEnabled(true);
+            bottomNavigationView.getMenu().findItem(R.id.navigation_dashboard).setEnabled(true);
         });
 
         return rootView;
@@ -269,7 +269,7 @@ public class WifiScannerFragment extends Fragment implements WifiteSettingsDialo
 
     @Override
     public void onCreateOptionsMenu(@NonNull Menu menu, MenuInflater inflater) {
-        inflater.inflate(R.menu.toolbar_menu, menu);
+        inflater.inflate(R.menu.wifite_ui_toolbar_menu, menu);
         super.onCreateOptionsMenu(menu, inflater);
     }
 
@@ -277,7 +277,7 @@ public class WifiScannerFragment extends Fragment implements WifiteSettingsDialo
     public boolean onOptionsItemSelected(MenuItem item) {
         switch (item.getItemId()) {
             case R.id.action_settings:
-                com.offsec.nethunter.WifiteSettingsDialogFragment settingsDialog = new com.offsec.nethunter.WifiteSettingsDialogFragment();
+                WifiteSettingFragment settingsDialog = new WifiteSettingFragment();
                 settingsDialog.setSettingsDialogListener(this);
                 settingsDialog.show(getParentFragmentManager(), "SettingsDialog");
                 return true;
@@ -313,7 +313,7 @@ public class WifiScannerFragment extends Fragment implements WifiteSettingsDialo
         public Dialog onCreateDialog(@Nullable Bundle savedInstanceState) {
             AlertDialog.Builder builder = new AlertDialog.Builder(requireActivity());
             LayoutInflater inflater = requireActivity().getLayoutInflater();
-            View view = inflater.inflate(R.layout.dialog_settings, null);
+            View view = inflater.inflate(R.layout.wifite_ui_settings, null);
 
             CheckBox checkboxOption = view.findViewById(R.id.checkbox_option);
 
@@ -353,12 +353,12 @@ public class WifiScannerFragment extends Fragment implements WifiteSettingsDialo
     }
 
     private void updateListView() {
-        ArrayAdapter<String> adapter = new ArrayAdapter<String>(requireContext(), R.layout.wifi_network_item, arrayList) {
+        ArrayAdapter<String> adapter = new ArrayAdapter<String>(requireContext(), R.layout.wifite_network_items, arrayList) {
             @NonNull
             @Override
             public View getView(int position, @Nullable View convertView, @NonNull ViewGroup parent) {
                 if (convertView == null) {
-                    convertView = LayoutInflater.from(getContext()).inflate(R.layout.wifi_network_item, parent, false);
+                    convertView = LayoutInflater.from(getContext()).inflate(R.layout.wifite_network_items, parent, false);
                 }
 
                 String[] parts = Objects.requireNonNull(getItem(position)).split(" - ");
@@ -416,7 +416,7 @@ public class WifiScannerFragment extends Fragment implements WifiteSettingsDialo
                 }
 
                 // Check if "iw" binary is available
-                boolean isIwAvailable = exe.Executer("which iw").trim().length() > 0;
+                boolean isIwAvailable = !exe.Executer("which iw").trim().isEmpty();
 
                 // Check if "wlan1" is available
                 boolean isWlan1Available = false;

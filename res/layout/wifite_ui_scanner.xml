@@ -111,6 +111,6 @@
             app:itemIconTint="@color/nav_item_color"
             app:itemTextColor="@color/nav_item_color"
             app:labelVisibilityMode="labeled"
-            app:menu="@menu/wifi_bottom_navigation_menu" />
+            app:menu="@menu/wifite_ui_bottom_navigation" />
     </LinearLayout>
 </androidx.drawerlayout.widget.DrawerLayout>
