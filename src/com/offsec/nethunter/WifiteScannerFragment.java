@@ -52,7 +52,6 @@ import java.util.Collections;
 import java.util.Objects;
 
 public class WifiteScannerFragment extends Fragment implements WifiteSettingFragment.SettingsDialogListener {
-    private boolean showNetworksWithoutSSID = true;
     public static final String TAG = "WifiScannerFragment";
     private static final String ARG_SECTION_NUMBER = "section_number";
     private ListView wifiNetworksList;
@@ -117,7 +116,7 @@ public class WifiteScannerFragment extends Fragment implements WifiteSettingFrag
         // Initialize SwipeRefreshLayout
         swipeRefreshLayout = rootView.findViewById(R.id.swipe_refresh_layout);
         swipeRefreshLayout.setOnRefreshListener(() -> {
-            scanWifi();
+            scanWifi(true);
             swipeRefreshLayout.setRefreshing(false);
         });
 
@@ -293,8 +292,7 @@ public class WifiteScannerFragment extends Fragment implements WifiteSettingFrag
 
     @Override
     public void onSettingsChanged(boolean showNetworksWithoutSSID) {
-        this.showNetworksWithoutSSID = showNetworksWithoutSSID;
-        scanWifi();
+        scanWifi(showNetworksWithoutSSID);
     }
 
     @NonNull
@@ -399,7 +397,7 @@ public class WifiteScannerFragment extends Fragment implements WifiteSettingFrag
         wifiNetworksList.setAdapter(adapter);
     }
 
-    private void scanWifi() {
+    private void scanWifi(boolean showNetworksWithoutSSID) {
         AsyncTask.execute(() -> {
             Activity activity = getActivity();
             assert activity != null;
@@ -501,7 +499,6 @@ public class WifiteScannerFragment extends Fragment implements WifiteSettingFrag
                         arrayList.clear();
                         arrayList.addAll(scanResults);
                         sortBySignal(); // Sort by signal strength by default
-                        //Snackbar.make(requireView(), "Scan complete", Snackbar.LENGTH_SHORT).show();
                     }
                 });
 
@@ -521,7 +518,7 @@ public class WifiteScannerFragment extends Fragment implements WifiteSettingFrag
             scanRunnable = new Runnable() {
                 @Override
                 public void run() {
-                    scanWifi();
+                    scanWifi(true);
                     handler.postDelayed(this, refreshInterval);
                 }
             };
