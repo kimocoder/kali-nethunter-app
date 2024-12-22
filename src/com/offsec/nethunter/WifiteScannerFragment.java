@@ -1,8 +1,6 @@
 package com.offsec.nethunter;
 
-
 import android.app.Activity;
-import android.app.Dialog;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
@@ -39,6 +37,7 @@ import androidx.fragment.app.Fragment;
 import androidx.lifecycle.viewmodel.CreationExtras;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
+import com.google.android.material.snackbar.BaseTransientBottomBar;
 import com.google.android.material.snackbar.Snackbar;
 import com.offsec.nethunter.utils.ShellExecuter;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
@@ -52,7 +51,6 @@ import java.util.List;
 import java.util.Collections;
 import java.util.Objects;
 
-
 public class WifiteScannerFragment extends Fragment implements WifiteSettingFragment.SettingsDialogListener {
     private boolean showNetworksWithoutSSID = true;
     public static final String TAG = "WifiScannerFragment";
@@ -64,11 +62,10 @@ public class WifiteScannerFragment extends Fragment implements WifiteSettingFrag
     private final ShellExecuter exe = new ShellExecuter();
     private Boolean iswatch;
     private WifiManager wifiManager;
-    private final Handler handler = new Handler();
     private Runnable scanRunnable;
-    private SwipeRefreshLayout swipeRefreshLayout;
-    private int refreshInterval = 10000; // Default to 10 seconds
 
+    private int refreshInterval = 10000; // Default to 10 seconds
+    private final Handler handler = new Handler();
 
     public static WifiteScannerFragment newInstance(int sectionNumber) {
         WifiteScannerFragment fragment = new WifiteScannerFragment();
@@ -100,6 +97,7 @@ public class WifiteScannerFragment extends Fragment implements WifiteSettingFrag
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
+        SwipeRefreshLayout swipeRefreshLayout;
         View rootView = inflater.inflate(R.layout.wifite_ui_scanner, container, false);
 
         // Initialize Toolbar
@@ -161,7 +159,7 @@ public class WifiteScannerFragment extends Fragment implements WifiteSettingFrag
         wifiNetworksList.setAdapter(wifiAdapter);
 
         Spinner refreshIntervalSpinner = rootView.findViewById(R.id.refresh_interval);
-        List<String> refreshOptions = Arrays.asList("OFF", "8 seconds", "10 seconds", "15 seconds", "20 seconds");
+        List<String> refreshOptions = Arrays.asList("Refresh OFF", "8 seconds", "10 seconds", "15 seconds", "20 seconds");
         ArrayAdapter<String> refreshAdapter = new ArrayAdapter<>(requireContext(), android.R.layout.simple_spinner_item, refreshOptions);
         refreshAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         refreshIntervalSpinner.setAdapter(refreshAdapter);
@@ -185,6 +183,9 @@ public class WifiteScannerFragment extends Fragment implements WifiteSettingFrag
                         break;
                     case 4:
                         refreshInterval = 20000;
+                        break;
+                    default:
+                        refreshInterval = 10000; // Default to 10 seconds
                         break;
                 }
                 scheduleScan();
@@ -254,6 +255,7 @@ public class WifiteScannerFragment extends Fragment implements WifiteSettingFrag
 
             // Stop scanning for WiFi
             if (scanRunnable != null) {
+                Handler handler = new Handler();
                 handler.removeCallbacks(scanRunnable);
             }
 
@@ -306,11 +308,11 @@ public class WifiteScannerFragment extends Fragment implements WifiteSettingFrag
             void onSettingsChanged(boolean showNetworksWithoutSSID);
         }
 
-        public SettingsDialogListener listener;
+        private SettingsDialogListener listener;
 
         @NonNull
         @Override
-        public Dialog onCreateDialog(@Nullable Bundle savedInstanceState) {
+        public AlertDialog onCreateDialog(@Nullable Bundle savedInstanceState) {
             AlertDialog.Builder builder = new AlertDialog.Builder(requireActivity());
             LayoutInflater inflater = requireActivity().getLayoutInflater();
             View view = inflater.inflate(R.layout.wifite_ui_settings, null);
@@ -328,12 +330,16 @@ public class WifiteScannerFragment extends Fragment implements WifiteSettingFrag
 
             return builder.create();
         }
+
+        public void setSettingsDialogListener(SettingsDialogListener listener) {
+            this.listener = listener;
+        }
     }
 
     private void clearList() {
         arrayList.clear();
         updateListView();
-        Snackbar.make(requireView(), "Terminal was cleared", Snackbar.LENGTH_SHORT).show();
+        Snackbar.make(requireView(), "Terminal was cleared", BaseTransientBottomBar.LENGTH_SHORT).show();
     }
 
     private void sortBySignal() {
@@ -474,7 +480,7 @@ public class WifiteScannerFragment extends Fragment implements WifiteSettingFrag
 
                 // Start WiFi scan
                 wifiManager.startScan();
-                if (ActivityCompat.checkSelfPermission(requireContext(), Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+                if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
                     ActivityCompat.requestPermissions(getActivity(), new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, 1);
                     return;
                 }
