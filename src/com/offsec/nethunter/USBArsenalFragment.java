@@ -48,7 +48,6 @@ import java.util.Arrays;
 import java.util.List;
 
 public class USBArsenalFragment extends Fragment {
-
     private static final String ARG_SECTION_NUMBER = "section_number";
     private static final String TAG = "USBArsenalFragment";
     private Context context;
@@ -60,7 +59,7 @@ public class USBArsenalFragment extends Fragment {
     private TextView usbStatusTextView;
     private TextView mountedImageTextView;
     private TextView mountedImageHintTextView;
-    private TextView currentInquiryHintTextView;
+
     private TextView usbNetworkTetheringHintTextView;
     private ImageButton reloadUSBStateImageButton;
     private ImageButton reloadMountStateButton;
@@ -77,7 +76,7 @@ public class USBArsenalFragment extends Fragment {
     private Spinner usbFuncSpinner;
     private Spinner usbNetworkAttackModeSpinner;
     private Spinner adbSpinner;
-    private EditText inquiryStringEditText;
+
     private EditText[] usbSwitchInfoEditTextGroup = new EditText[5];
     private EditText[] usbNetworkInfoEditTextGroup = new EditText[5];
     private String usbStorageFunctionName;
@@ -107,6 +106,8 @@ public class USBArsenalFragment extends Fragment {
     @SuppressLint("SetTextI18n")
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
+        EditText inquiryStringEditText;
+        TextView currentInquiryHintTextView;
         super.onViewCreated(view, savedInstanceState);
         targetOSSpinner                     = view.findViewById(R.id.f_usbarsenal_spr_targetplatform);
         usbFuncSpinner                      = view.findViewById(R.id.f_usbarsenal_spr_usbfunctions);
@@ -131,7 +132,6 @@ public class USBArsenalFragment extends Fragment {
         imageMounterLL                      = view.findViewById(R.id.f_usbarsenal_ll_imageMounter_sub2);
         usbNetworkTetheringLL               = view.findViewById(R.id.f_usbarsenal_ll_usbnetworktethering_sub2);
         inquiryStringEditText               = view.findViewById(R.id.f_usbarsenal_et_inquiryString);
-
 
         usbSwitchInfoEditTextGroup[0] = view.findViewById(R.id.f_usbarsenal_et_idvendor);
         usbSwitchInfoEditTextGroup[1] = view.findViewById(R.id.f_usbarsenal_et_idproduct);
@@ -174,7 +174,7 @@ public class USBArsenalFragment extends Fragment {
 
             @Override
             public void onNothingSelected(AdapterView<?> parent) {
-
+                // TODO document why this method is empty
             }
         });
 
@@ -193,7 +193,7 @@ public class USBArsenalFragment extends Fragment {
 
             @Override
             public void onNothingSelected(AdapterView<?> parent) {
-
+                // TODO document why this method is empty
             }
         });
 
@@ -205,7 +205,7 @@ public class USBArsenalFragment extends Fragment {
 
             @Override
             public void onNothingSelected(AdapterView<?> parent) {
-
+                // TODO document why this method is empty
             }
         });
 
@@ -217,39 +217,18 @@ public class USBArsenalFragment extends Fragment {
 
             @Override
             public void onNothingSelected(AdapterView<?> parent) {
-
+                // TODO document why this method is empty
             }
         });
 
-        setUSBIfaceButton.setOnClickListener(v -> {
-            if (isAllUSBInfosValid()) {
-                setUSBIfaceButton.setEnabled(false);
-                String target = targetOSSpinner.getSelectedItem().toString().equals("Windows")?"win":
-                        targetOSSpinner.getSelectedItem().toString().equals("Linux")?"lnx":
-                                targetOSSpinner.getSelectedItem().toString().equals("Mac OS")?"mac":"";
-                String functions = usbFuncSpinner.getSelectedItem().toString();
-                String adbEnable = adbSpinner.getSelectedItem().toString().equals("Enable")?",adb":"";
-                String idVendor = " -v '" + usbSwitchInfoEditTextGroup[0].getText().toString() + "'";
-                String idProduct = " -p '" + usbSwitchInfoEditTextGroup[1].getText().toString() + "'";
-                String manufacturer = usbSwitchInfoEditTextGroup[2].getText().toString().isEmpty()?"":" -m '" + usbSwitchInfoEditTextGroup[2].getText().toString() + "'";
-                String product = usbSwitchInfoEditTextGroup[3].getText().toString().isEmpty()?"":" -P '" + usbSwitchInfoEditTextGroup[3].getText().toString() + "'";
-                String serialnumber = usbSwitchInfoEditTextGroup[4].getText().toString().isEmpty()?"":" -s '" + usbSwitchInfoEditTextGroup[4].getText().toString() + "'";
+        setUSBIfaceButton.setOnClickListener(this::onClick);
 
-                Message msg = new Message();
-                msg.what = USBArsenalHandlerThread.SETUSBIFACE;
-                msg.obj = "[ -f /init.nethunter.rc ] && setprop sys.usb.config " + functions + " || " + NhPaths.APP_SCRIPTS_PATH + "/usbarsenal -t '" + target + "' -f '" + functions + "'" + adbEnable + idVendor + idProduct + manufacturer + product + serialnumber;
-                usbArsenalHandlerThread.getHandler().sendMessage(msg);
-            }
-        });
-
-        setUSBNetworkTetheringButton.setOnClickListener(v -> {
-            run_cmd_android("usbtethering -o " + usbNetworkInfoEditTextGroup[0].getText().toString() +
-                    " -i " + usbNetworkInfoEditTextGroup[1].getText().toString() +
-                    " -A " + usbNetworkInfoEditTextGroup[2].getText().toString() +
-                    " -B " + usbNetworkInfoEditTextGroup[2].getText().toString() +
-                    " -C " + usbNetworkInfoEditTextGroup[3].getText().toString() +
-                    " -D " + usbNetworkInfoEditTextGroup[4].getText().toString());
-        });
+        setUSBNetworkTetheringButton.setOnClickListener(v -> run_cmd_android("usbtethering -o " + usbNetworkInfoEditTextGroup[0].getText().toString() +
+                " -i " + usbNetworkInfoEditTextGroup[1].getText().toString() +
+                " -A " + usbNetworkInfoEditTextGroup[2].getText().toString() +
+                " -B " + usbNetworkInfoEditTextGroup[2].getText().toString() +
+                " -C " + usbNetworkInfoEditTextGroup[3].getText().toString() +
+                " -D " + usbNetworkInfoEditTextGroup[4].getText().toString()));
 
         reloadUSBStateImageButton.setOnClickListener(v -> {
             Message msg = new Message();
@@ -399,15 +378,15 @@ public class USBArsenalFragment extends Fragment {
                         break;
                     case USBArsenalHandlerThread.RELOAD_USBIFACE:
                         uiHandler.post(() -> {
-                            if (resultObject.toString().equals("")) {
+                            if (resultObject.toString().isEmpty()) {
                                 usbStatusTextView.setText("No USB function has been enabled");
                                 imageMounterLL.setVisibility(View.GONE);
                                 mountedImageHintTextView.setVisibility(View.VISIBLE);
                             } else {
                                 usbStatusTextView.setText(resultObject.toString()
-                                        .replaceAll("/config/usb_gadget/g1/functions/", "")
-                                        .replaceAll("/config/usb_gadget/g1/functions","gsi.rndis")
-                                        .replaceAll(" ", "\n"));
+                                        .replace("/config/usb_gadget/g1/functions/", "")
+                                        .replace("/config/usb_gadget/g1/functions","gsi.rndis")
+                                        .replace(" ", "\n"));
                                 if (usbStatusTextView.getText().toString().contains("mass_storage")){
                                     imageMounterLL.setVisibility(View.VISIBLE);
                                     mountedImageHintTextView.setVisibility(View.GONE);
@@ -431,12 +410,12 @@ public class USBArsenalFragment extends Fragment {
                     case USBArsenalHandlerThread.GET_STORAGE_FUNC_FOLDER_NAME:
                         String folder_name = resultObject.toString().split("\\n")[0];
                         // fallback to mass_storage.0 if other not found
-                        if (folder_name.equals("")) folder_name = "mass_storage.0";
+                        if (folder_name.isEmpty()) folder_name = "mass_storage.0";
                         usbStorageFunctionName = folder_name;
                         break;
                     case USBArsenalHandlerThread.RELOAD_MOUNTSTATUS:
                         uiHandler.post(() -> {
-                            if (resultObject.toString().equals("")){ mountedImageTextView.setText("No image is mounted."); }
+                            if (resultObject.toString().isEmpty()){ mountedImageTextView.setText("No image is mounted."); }
                             else {mountedImageTextView.setText(resultObject.toString());}
                         });
                         break;
@@ -470,7 +449,7 @@ public class USBArsenalFragment extends Fragment {
                     case USBArsenalHandlerThread.CHANGE_INQUIRY_STRING:
                         String newInquiry = inquiryStringEditText.getText().toString();
                         if ((int)resultObject == 0){
-                            if (newInquiry.equals("")) {
+                            if (newInquiry.isEmpty()) {
                                 NhPaths.showMessage(context, "Inquiry string reset to default successfully.");
                                 currentInquiryHintTextView.setText("Linux File-CD/Stor gadget (kernel default)");
                             } else {
@@ -643,11 +622,9 @@ public class USBArsenalFragment extends Fragment {
             File[] filesInFolder = image_folder.listFiles();
             assert filesInFolder != null;
             for (File file : filesInFolder) {
-                if (!file.isDirectory()) {
-                    if (file.getName().contains(".img") || file.getName().contains(".iso")) {
+                if (!file.isDirectory() && (file.getName().contains(".img") || file.getName().contains(".iso"))) {
                         result.add(file.getName());
                     }
-                }
             }
         } catch (NullPointerException e) {
             e.printStackTrace();
@@ -728,5 +705,26 @@ public class USBArsenalFragment extends Fragment {
     public void run_cmd_android(String cmd) {
         Intent intent = Bridge.createExecuteIntent("/data/data/com.offsec.nhterm/files/usr/bin/android-su", cmd);
         context.startActivity(intent);
+    }
+
+    private void onClick(View v) {
+        if (isAllUSBInfosValid()) {
+            setUSBIfaceButton.setEnabled(false);
+            String target = targetOSSpinner.getSelectedItem().toString().equals("Windows") ? "win" :
+                    targetOSSpinner.getSelectedItem().toString().equals("Linux") ? "lnx" :
+                            targetOSSpinner.getSelectedItem().toString().equals("Mac OS") ? "mac" : "";
+            String functions = usbFuncSpinner.getSelectedItem().toString();
+            String adbEnable = adbSpinner.getSelectedItem().toString().equals("Enable") ? ",adb" : "";
+            String idVendor = " -v '" + usbSwitchInfoEditTextGroup[0].getText().toString() + "'";
+            String idProduct = " -p '" + usbSwitchInfoEditTextGroup[1].getText().toString() + "'";
+            String manufacturer = usbSwitchInfoEditTextGroup[2].getText().toString().isEmpty() ? "" : " -m '" + usbSwitchInfoEditTextGroup[2].getText().toString() + "'";
+            String product = usbSwitchInfoEditTextGroup[3].getText().toString().isEmpty() ? "" : " -P '" + usbSwitchInfoEditTextGroup[3].getText().toString() + "'";
+            String serialnumber = usbSwitchInfoEditTextGroup[4].getText().toString().isEmpty() ? "" : " -s '" + usbSwitchInfoEditTextGroup[4].getText().toString() + "'";
+
+            Message msg = new Message();
+            msg.what = USBArsenalHandlerThread.SETUSBIFACE;
+            msg.obj = "[ -f /init.nethunter.rc ] && setprop sys.usb.config " + functions + " || " + NhPaths.APP_SCRIPTS_PATH + "/usbarsenal -t '" + target + "' -f '" + functions + "'" + adbEnable + idVendor + idProduct + manufacturer + product + serialnumber;
+            usbArsenalHandlerThread.getHandler().sendMessage(msg);
+        }
     }
 }

@@ -4,6 +4,7 @@ import android.annotation.SuppressLint;
 import android.content.Context;
 import android.os.Handler;
 import android.os.HandlerThread;
+import android.os.Looper;
 import android.os.Message;
 import android.os.Process;
 
@@ -11,7 +12,6 @@ import androidx.annotation.NonNull;
 
 import com.offsec.nethunter.SQL.USBArsenalSQL;
 import com.offsec.nethunter.utils.ShellExecuter;
-
 
 public class USBArsenalHandlerThread extends HandlerThread {
     private Handler handler;
@@ -37,37 +37,23 @@ public class USBArsenalHandlerThread extends HandlerThread {
     @SuppressLint("HandlerLeak")
     @Override
     protected void onLooperPrepared() {
-        handler = new Handler() {
+        handler = new Handler(Looper.getMainLooper()) {
             @Override
             public void handleMessage(@NonNull Message msg) {
                 super.handleMessage(msg);
                 switch (msg.what) {
                     case IS_INIT_EXIST:
+                    case SETUSBIFACE:
+                    case MOUNT_IMAGE:
+                    case UNMOUNT_IMAGE:
+                    case CHANGE_INQUIRY_STRING:
                         resultObject = exe.RunAsRootReturnValue(msg.obj.toString());
                         break;
                     case RETRIEVE_USB_FUNCS:
-                        resultObject = exe.RunAsRootOutput(msg.obj.toString());
-                        break;
-                    case SETUSBIFACE:
-                        resultObject = exe.RunAsRootReturnValue(msg.obj.toString());
-                        break;
                     case RELOAD_USBIFACE:
-                        resultObject = exe.RunAsRootOutput(msg.obj.toString());
-                        break;
                     case GET_STORAGE_FUNC_FOLDER_NAME:
-                        resultObject = exe.RunAsRootOutput(msg.obj.toString());
-                        break;
                     case RELOAD_MOUNTSTATUS:
                         resultObject = exe.RunAsRootOutput(msg.obj.toString());
-                        break;
-                    case MOUNT_IMAGE:
-                        resultObject = exe.RunAsRootReturnValue(msg.obj.toString());
-                        break;
-                    case UNMOUNT_IMAGE:
-                        resultObject = exe.RunAsRootReturnValue(msg.obj.toString());
-                        break;
-                    case CHANGE_INQUIRY_STRING:
-                        resultObject = exe.RunAsRootReturnValue(msg.obj.toString());
                         break;
                     case GET_USBSWITCH_SQL_DATA:
                         resultObject = USBArsenalSQL.getInstance((Context) msg.obj)
