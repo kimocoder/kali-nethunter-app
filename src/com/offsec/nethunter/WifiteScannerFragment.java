@@ -62,9 +62,9 @@ public class WifiteScannerFragment extends Fragment implements WifiteSettingFrag
     private Boolean iswatch;
     private WifiManager wifiManager;
     private Runnable scanRunnable;
-
     private int refreshInterval = 10000; // Default to 10 seconds
     private final Handler handler = new Handler();
+    private int selectedPosition = -1; // Variable to hold the selected position
 
     public static WifiteScannerFragment newInstance(int sectionNumber) {
         WifiteScannerFragment fragment = new WifiteScannerFragment();
@@ -124,13 +124,13 @@ public class WifiteScannerFragment extends Fragment implements WifiteSettingFrag
         BottomNavigationView bottomNavigationView = rootView.findViewById(R.id.bottom_navigation);
         bottomNavigationView.setOnItemSelectedListener(item -> {
             switch (item.getItemId()) {
-                case R.id.navigation_home:
+                case 2131297092:
                     // Handle home action
                     return true;
-                case R.id.navigation_dashboard:
+                case 2131297090:
                     // Handle dashboard action
                     return true;
-                case R.id.navigation_notifications:
+                case 2131297093:
                     // Handle notifications action
                     return true;
                 default:
@@ -247,10 +247,20 @@ public class WifiteScannerFragment extends Fragment implements WifiteSettingFrag
 
         // Set OnItemClickListener to hold selection
         wifiNetworksList.setOnItemClickListener((parent, view, position, id) -> {
-            for (int i = 0; i < parent.getChildCount(); i++) {
-                parent.getChildAt(i).setBackgroundColor(Color.TRANSPARENT); // Reset background color for all items
+            if (selectedPosition == position) {
+                // Deselect the item
+                selectedPosition = -1;
+                view.setBackgroundColor(Color.TRANSPARENT);
+                bottomNavigationView.getMenu().findItem(R.id.navigation_dashboard).setEnabled(false);
+            } else {
+                // Select the new item
+                selectedPosition = position;
+                for (int i = 0; i < parent.getChildCount(); i++) {
+                    parent.getChildAt(i).setBackgroundColor(Color.TRANSPARENT); // Reset background color for all items
+                }
+                view.setBackgroundColor(Color.LTGRAY); // Set background color for selected item
+                bottomNavigationView.getMenu().findItem(R.id.navigation_dashboard).setEnabled(true);
             }
-            view.setBackgroundColor(Color.LTGRAY); // Set background color for selected item
 
             // Stop scanning for WiFi
             if (scanRunnable != null) {
@@ -260,9 +270,6 @@ public class WifiteScannerFragment extends Fragment implements WifiteSettingFrag
 
             // Set the scanner time spinner to 'OFF'
             refreshIntervalSpinner.setSelection(0);
-
-            // Enable the "Attack" menu item when a target is selected
-            bottomNavigationView.getMenu().findItem(R.id.navigation_dashboard).setEnabled(true);
         });
 
         return rootView;
@@ -277,12 +284,12 @@ public class WifiteScannerFragment extends Fragment implements WifiteSettingFrag
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         switch (item.getItemId()) {
-            case R.id.action_settings:
+            case 2131296354:
                 WifiteSettingFragment settingsDialog = new WifiteSettingFragment();
                 settingsDialog.setSettingsDialogListener(this);
                 settingsDialog.show(getParentFragmentManager(), "SettingsDialog");
                 return true;
-            case R.id.action_clear:
+            case 2131296344:
                 clearList();
                 return true;
             default:
@@ -325,7 +332,6 @@ public class WifiteScannerFragment extends Fragment implements WifiteSettingFrag
                         }
                     })
                     .setNegativeButton("Cancel", (dialog, id) -> dialog.dismiss());
-
             return builder.create();
         }
 
@@ -357,7 +363,7 @@ public class WifiteScannerFragment extends Fragment implements WifiteSettingFrag
     }
 
     private void updateListView() {
-        ArrayAdapter<String> adapter = new ArrayAdapter<String>(requireContext(), R.layout.wifite_network_items, arrayList) {
+        ArrayAdapter<String> adapter = new ArrayAdapter<>(requireContext(), R.layout.wifite_network_items, arrayList) {
             @NonNull
             @Override
             public View getView(int position, @Nullable View convertView, @NonNull ViewGroup parent) {
