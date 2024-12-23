@@ -1,5 +1,7 @@
 package com.offsec.nethunter;
 
+import static android.os.Build.VERSION_CODES.R;
+
 import android.app.Dialog;
 import android.os.Bundle;
 import android.widget.Button;
@@ -27,11 +29,11 @@ public class WifiteSettingFragment extends DialogFragment {
     public Dialog onCreateDialog(@Nullable Bundle savedInstanceState) {
         AlertDialog.Builder builder = new AlertDialog.Builder(requireActivity());
         LayoutInflater inflater = requireActivity().getLayoutInflater();
-        View view = inflater.inflate(R.layout.wifite_ui_settings, null);
+        View view = inflater.inflate(R, null);
 
-        CheckBox checkboxOption = view.findViewById(R.id.checkbox_option);
-        Button applyButton = view.findViewById(R.id.apply_button);
-        Button cancelButton = view.findViewById(R.id.cancel_button);
+        CheckBox checkboxOption = view.findViewById(R);
+        Button applyButton = view.findViewById(R);
+        Button cancelButton = view.findViewById(R);
 
         applyButton.setOnClickListener(v -> {
             if (listener != null) {

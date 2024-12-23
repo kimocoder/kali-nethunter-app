@@ -29,10 +29,9 @@ android {
         // for view binding:
         // viewBinding true
     }
-
     compileOptions {
-        sourceCompatibility JavaVersion.VERSION_1_8
-        targetCompatibility JavaVersion.VERSION_1_8
+        sourceCompatibility javaVersion
+        targetCompatibility javaVersion
     }
 
     defaultConfig {
@@ -107,7 +106,6 @@ dependencies {
     debugImplementation 'com.squareup.leakcanary:leakcanary-android:3.0-alpha-8'
 }
 
-// Set the desired JAVA (Gradle) and Android (Android Gradle Plugin) version. Searches for for JDK in JAVA_HOME and java.home.
 def jdkHome = System.getenv("JAVA_HOME") ?: System.getProperty("java.home")
 if (jdkHome) {
     println "Using JDK from: $jdkHome"
@@ -115,9 +113,8 @@ if (jdkHome) {
 } else {
     throw new GradleException("JAVA_HOME environment variable or java.home system property must be set")
 }
-
 java {
     toolchain {
-        languageVersion = JavaLanguageVersion.of(17) // Specify the desired Java version
+        languageVersion = JavaLanguageVersion.of(project.findProperty("javaVersion").toInteger())
     }
 }
