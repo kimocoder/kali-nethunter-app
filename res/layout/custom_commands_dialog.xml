@@ -18,15 +18,15 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="@string/add_lauchner_btn_label"
+                android:text="@string/add_launcher_btn_label"
                 android:textAppearance="?android:attr/textAppearanceLarge"
                 android:textColor="@android:color/white" />
 
             <EditText
                 android:id="@+id/editText_launcher_btn_label"
                 android:layout_width="match_parent"
-
                 android:layout_height="wrap_content"
+                android:autofillHints="none"
                 android:textColor="@android:color/white">
                 <requestFocus />
             </EditText>
@@ -34,7 +34,7 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="@string/add_lauchner_btn_command"
+                android:text="@string/add_launcher_btn_command"
                 android:textAppearance="?android:attr/textAppearanceLarge"
                 android:textColor="@android:color/white" />
 
@@ -43,6 +43,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="10dp"
+                android:autofillHints="none"
                 android:textColor="@android:color/white" />
 
             <RelativeLayout
@@ -54,25 +55,25 @@
                     android:id="@+id/run_in_shell_text"
                     android:layout_width="wrap_content"
                     android:layout_height="match_parent"
-                    android:layout_above="@+id/add_lauchner_btn_execmode_text"
-                    android:layout_alignEnd="@+id/add_lauchner_btn_execmode_text"
+                    android:layout_above="@+id/add_launhcer_btn_execmode_text"
+                    android:layout_alignEnd="@+id/add_launhcer_btn_execmode_text"
                     android:layout_alignParentStart="true"
-                    android:text="Send to:"
+                    android:text="@string/send_to"
                     android:textAppearance="?android:attr/textAppearanceLarge"
                     android:textColor="@android:color/white" />
 
                 <TextView
-                    android:id="@+id/add_lauchner_btn_execmode_text"
+                    android:id="@+id/add_launhcer_btn_execmode_text"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_alignTop="@+id/spinnerExecMode"
                     android:layout_alignParentStart="true"
                     android:layout_gravity="center_vertical"
                     android:paddingTop="5dp"
-                    android:text="Exec mode: "
-
+                    android:text="@string/exec_mode"
                     android:textAppearance="?android:attr/textAppearanceLarge"
                     android:textColor="@android:color/white" />
+
                 <Spinner
                     android:id="@+id/spinnerRun_in_shell"
                     android:layout_width="wrap_content"
@@ -93,7 +94,7 @@
                     android:entries="@array/exec_mode"
                     android:paddingTop="10dp"
                     android:layout_below="@+id/spinnerRun_in_shell"
-                    android:layout_toEndOf="@+id/add_lauchner_btn_execmode_text" />
+                    android:layout_toEndOf="@+id/add_launhcer_btn_execmode_text" />
             </RelativeLayout>
 
             <RelativeLayout
@@ -106,7 +107,7 @@
                     android:layout_height="wrap_content"
                     android:layout_alignParentStart="true"
                     android:layout_alignParentBottom="true"
-                    android:text="Run at boot:"
+                    android:text="@string/run_at_boot"
                     android:textAppearance="?android:attr/textAppearanceLarge"
                     android:textColor="@android:color/white" />
 
@@ -114,10 +115,10 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text=""
-                    android:id="@+id/custom_comands_runAtBoot"
+                    android:id="@+id/custom_commands_runAtBoot"
                     android:textAppearance="?android:attr/textAppearanceLarge"
                     android:checked="false"
-                    android:layout_marginLeft="3dp"
+                    android:layout_marginStart="3dp"
                     android:layout_marginBottom="-8dp"
                     android:layout_alignParentTop="true"
                     android:layout_toEndOf="@+id/textView10" />

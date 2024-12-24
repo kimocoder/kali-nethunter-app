@@ -38,7 +38,6 @@
             android:layout_gravity="left"
             android:layout_margin="5dp"
             android:background="@drawable/offsec_logo_transparent" />
-
     </RelativeLayout>
 
     <LinearLayout
@@ -67,7 +66,5 @@
             android:paddingBottom="4dp"
             android:textColor="@android:color/white"
             android:textSize="12sp" />
-
     </LinearLayout>
-
 </LinearLayout>
