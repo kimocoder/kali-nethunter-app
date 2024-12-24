@@ -89,7 +89,6 @@
     <string name="badusb_label">BadUSB MITM Attack</string>
     <string name="badusb_description">This is our implementation of the BadUSB attack as demonstrated at Black Hat USA 2014. Enabling this USB gadget mode will allow your device to act as a USB network interface when plugged into a target computer. Connecting the USB cable to a PC will force all traffic from that PC (Windows or Linux) through the NetHunter device, where the traffic can be MITM\'ed.</string>
 
-
     <string name="wifipumpkin_description">Start an Evil-Twin Access Point and intercept HTTP traffic. Custom captive portals, featuring mobile network upstream (rmnet_data2), internal wlan0 upstream, internal wlan0/wlan1 AP mode, and external adapters. Custom portals are also supported. Testing version. Preview will be added soon.</string>
     <string name="mana_hostapd_wpe">The hostapd configuration file used for 802.1x/EAP authentication attack (hostapd-wpe)  This is not used with MANA.</string>
     <string name="mana_hostapd_wpe_certs">Generate certificates (1st time only)</string>
@@ -100,8 +99,6 @@
     <string name="mana_nat_simple_bdf">The Mana script that does full NAT &amp; BDFProxy HTTP routing to port 8080.</string>
     <string name="bdfproxy_cfg">The configuration file for BDFProxy.</string>
     <string name="mana_bettercap_description">Route traffic to bettercap proxy with Mana-toolkit</string>
-
-
     <string name="hostapd_private_key">Private Key Password</string>
 
     <string name="select_language">Language</string>
@@ -136,7 +133,6 @@
     <string name="update_kali_chroot">Update Kali chroot</string>
     <string name="turn_off_external_wifi">Turn Off External Wifi</string>
     <string name="kali_dumpmifare">Dump Mifare</string>
-
 
     <string name="update">Update</string>
     <string name="load">Load from SDCARD</string>
@@ -359,7 +355,7 @@
     <string name="drawertitlesearchsploit">SearchSploit</string>
     <string name="drawertitlepineapple">Pineapple Connector</string>
     <string name="drawertitlegps">Wardriving</string>
-    <string name="drawertitledeauth">WiFite</string>
+    <string name="drawertitledeauth">Wifite</string>
     <string name="drawertitlesettings">Settings</string>
     <string name="drawertitlekernel">Kernel</string>
     <string name="drawertitlemodules">Modules</string>
@@ -424,8 +420,8 @@
     <string name="searchsploit_searchbar">Search Exploits</string>
 
     <!-- Custom Launcher -->
-    <string name="add_lauchner_btn_label">Label: </string>
-    <string name="add_lauchner_btn_command">Command: </string>
+    <string name="add_launcher_btn_label">Label: </string>
+    <string name="add_launcher_btn_command">Command: </string>
     <string name="toast_input_error_launcher">Invalid arguments given!</string>
     <string name="installing_notice">Installing Chroot…</string>
     <string name="drawer_opened">Drawer opened</string>
@@ -512,7 +508,7 @@
     <string name="switch_gps_provider">Android GPS Provider</string>
     <string name="switch_gpsd">gpsd in chroot</string>
     <string name="gps_button_launch_app">Launch %s in NH Terminal</string>
-    <string name="gps_description">Converts your GPS to NMEA then provides to Kali chroot. Perfect for wardriving with Kismet or just a generic GPS server for Kali. Select your desired datasources. Make sure your wireless interface is in monitor mode before starting Kismet. Internal wireless interfaces can also be used thanks to the monitor mode by QCACLD-3.0 driver.</string>
+    <string name="gps_description">Converts your GPS to NMEA then provides to Kali chroot. Perfect for war-driving with Kismet or just a generic GPS server for Kali. Select your desired datasources. Make sure your wireless interface is in monitor mode before starting Kismet. Internal wireless interfaces can also be used thanks to the monitor mode by QCACLD-3.0 driver.</string>
     <string name="gps_help">You may need to give NetHunter permissions to GPS. Go to Settings > Apps > NetHunter > Permissions.</string>
     <string name="loading_wait">Loading wait…</string>
     <string name="loading_file">Loading…  FILE: %s</string>
@@ -562,7 +558,7 @@
     <string name="download_latest_kali_chroot_from_official_image">DOWNLOAD LATEST KALI CHROOT FROM OFFICIAL IMAGE</string>
     <string name="download_latest_kali_chroot_from_official_image2">DOWNLOAD LATEST KALI CHROOT FROM OFFICIAL IMAGE</string>
     <string name="type_the_full_path_of_your_kali_chroot_tarball_file">Type the full path of your Kali Chroot tarball file:</string>
-    <string name="long_press_to_manage_a_command_dont_forget_to_backup_use_double_quotes_if_needed">Long press to manage a command, dont forget to backup!. Use double quotes if needed.</string>
+    <string name="long_press_to_manage_a_command_dont_forget_to_backup_use_double_quotes_if_needed">Long press to manage a command, don\'t forget to backup!. Use double quotes if needed.</string>
     <string name="search_command">search command</string>
     <string name="add_command">Add Command</string>
     <string name="add">Add</string>
@@ -577,15 +573,15 @@
     <string name="change_path">Change path</string>
     <string name="data_local_nhsystem">/data/local/nhsystem/</string>
     <string name="kali_arm64">kali-arm64</string>
-    <string name="loading_dot_dot_dot">Loading ...</string>
+    <string name="loading_dot_dot_dot">Loading …</string>
     <string name="chroot_manager_install">Install</string>
-    <string name="chroot_manager_add_metapackage">Add Metapackge</string>
+    <string name="chroot_manager_add_metapackage">Add Metapackage</string>
     <string name="chroot_manager_backup">Backup</string>
     <string name="chroot_manager_start">Start</string>
     <string name="chroot_manager_stop">Stop</string>
     <string name="chroot_manager_remove">Remove</string>
 
-    <!-- Nethunter Audio -->
+    <!-- NetHunter Audio -->
     <string name="module_name">NetHunter Audio</string>
     <string name="audio_description">This module allow Chroot audio playback to Android environment over local server, ensuring seamless playback of HQ-Audio output through the main speakers.</string>
     <string name="auto_start">Auto Start</string>
@@ -618,7 +614,7 @@
     <string name="show_networks">Show</string>
     <string name="clear">Clear</string>
 
-    <!-- NetHunter WiFi -->
+    <!-- NetHunter Wifite -->
     <string name="wifi_bottom_navigation_home">Scan</string>
     <string name="wifi_bottom_navigation_attack">Attack</string>
     <string name="wifi_bottom_navigation_crack">Crack</string>
@@ -629,12 +625,38 @@
     <string name="bssid2">BSSID</string>
     <string name="encryption">Enc</string>
     <string name="encryption2">Enc</string>
-    <string name="bssid3">BSSID</string>
+    <string name="bssid3">SSID</string>
     <string name="channel2">Chan</string>
     <string name="signal2">Signal</string>
     <string name="apply">Apply</string>
     <string name="cancel2">Cancel</string>
     <string name="sort_networks">Sort networks by:</string>
     <string name="show_networks_without_ssid">Show networks without SSID</string>
-    <string name="wifite_settings">WiFite Settings</string>
+    <string name="wifite_settings">Wifite: Settings</string>
+    <string name="send_to">Send to:</string>
+    <string name="exec_mode">Exec mode:</string>
+    <string name="run_at_boot">Run at boot:</string>
+
+    <string-array name="wifi_channels">
+        <item>1</item>
+        <item>2</item>
+        <item>3</item>
+        <item>4</item>
+        <item>5</item>
+        <item>6</item>
+        <item>7</item>
+        <item>8</item>
+        <item>9</item>
+        <item>10</item>
+        <item>11</item>
+        <item>12</item>
+        <item>13</item>
+        <item>14</item>
+    </string-array>
+
+    <string-array name="wifi_sort_networks">
+        <item>Sort by Signal</item>
+        <item>Sort by Encryption</item>
+        <item>Sort by Channel</item>
+    </string-array>
 </resources>
