@@ -21,20 +21,6 @@
         android:text="@string/show_networks_without_ssid"
         android:checked="true" />
 
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="@string/sort_networks"
-        android:textSize="16sp"
-        android:paddingTop="8dp" />
-
-    <Spinner
-        android:id="@+id/dropdown_option"
-        android:layout_width="wrap_content"
-        android:layout_height="48dp"
-        android:entries="@array/dropdown_options"
-        android:defaultValue="Signal" />
-
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
