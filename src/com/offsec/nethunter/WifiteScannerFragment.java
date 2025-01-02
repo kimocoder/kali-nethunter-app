@@ -62,7 +62,6 @@ import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
-import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.fragment.app.DialogFragment;
 import androidx.fragment.app.Fragment;
@@ -252,27 +251,7 @@ public class WifiteScannerFragment extends Fragment implements WifiteSettingFrag
         // Populate Spinner with available WiFi channels
         List<String> wifiChannels = Arrays.asList("All Channels", "2.4 ghz channels", "5 ghz channels", "6 ghz channels");
 
-        ArrayAdapter<String> channelAdapter = new ArrayAdapter<>(requireContext(), android.R.layout.simple_spinner_item, wifiChannels) {
-            @Override
-            public boolean isEnabled(int position) {
-                // Disable the "6 ghz channels" option for now
-                return position != 3;
-            }
-
-            @Override
-            public View getDropDownView(int position, @Nullable View convertView, @NonNull ViewGroup parent) {
-                View view = super.getDropDownView(position, convertView, parent);
-                TextView tv = (TextView) view;
-                if (position == 3) {
-                    // Set the text color to gray for the disabled item
-                    tv.setTextColor(Color.GRAY);
-                } else {
-                    tv.setTextColor(Color.WHITE);
-                }
-                return view;
-            }
-        };
-        channelAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        ArrayAdapter<String> channelAdapter = getChannelAdapter(wifiChannels);
         wifiChannel.setAdapter(channelAdapter);
 
         wifiChannel.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
@@ -332,6 +311,32 @@ public class WifiteScannerFragment extends Fragment implements WifiteSettingFrag
         });
 
         return rootView;
+    }
+
+    @NonNull
+    private ArrayAdapter<String> getChannelAdapter(List<String> wifiChannels) {
+        ArrayAdapter<String> channelAdapter = new ArrayAdapter<>(requireContext(), android.R.layout.simple_spinner_item, wifiChannels) {
+            @Override
+            public boolean isEnabled(int position) {
+                // Disable the "6 ghz channels" option for now
+                return position != 3;
+            }
+
+            @Override
+            public View getDropDownView(int position, @Nullable View convertView, @NonNull ViewGroup parent) {
+                View view = super.getDropDownView(position, convertView, parent);
+                TextView tv = (TextView) view;
+                if (position == 3) {
+                    // Set the text color to gray for the disabled item
+                    tv.setTextColor(Color.GRAY);
+                } else {
+                    tv.setTextColor(Color.WHITE);
+                }
+                return view;
+            }
+        };
+        channelAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        return channelAdapter;
     }
 
     @Override
@@ -472,7 +477,7 @@ public class WifiteScannerFragment extends Fragment implements WifiteSettingFrag
         wifiNetworksList.setAdapter(adapter);
     }
 
-    private void scanWifi(boolean showNetworksWithoutSSID, String all) {
+    private void scanWifi(boolean showNetworksWithoutSSID, String channelBand) {
         executorService.execute(() -> {
             Activity activity = getActivity();
             assert activity != null;
@@ -524,14 +529,13 @@ public class WifiteScannerFragment extends Fragment implements WifiteSettingFrag
                     } else {
                         ArrayList<String> scanResultsList = new ArrayList<>(Arrays.asList(scanResults.split("\n")));
                         arrayList.clear();
-                        arrayList.addAll(scanResultsList);
+                        arrayList.addAll(filterScanResults(scanResultsList, channelBand));
                         sortBySignal(); // Sort by signal strength by default
                     }
                 });
             } else {
                 // Use default WiFiManager to scan for networks on "wlan0"
-                List<ScanResult> results = wifiManager.getScanResults();
-                List<ScanResult> finalResults1 = results;
+                List<ScanResult> finalResults1 = wifiManager.getScanResults();
                 activity.runOnUiThread(() -> {
                     if (finalResults1.isEmpty()) {
                         final ArrayList<String> noTargets = new ArrayList<>();
@@ -546,44 +550,37 @@ public class WifiteScannerFragment extends Fragment implements WifiteSettingFrag
                             }
                         }
                         arrayList.clear();
-                        arrayList.addAll(scanResults);
+                        arrayList.addAll(filterScanResults(scanResults, channelBand));
                         sortBySignal(); // Sort by signal strength by default
                     }
                 });
+            }
 
-                // Start WiFi scan
-                wifiManager.startScan();
-                if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-                    ActivityCompat.requestPermissions(getActivity(), new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, 1);
-                    return;
-                }
-                results = wifiManager.getScanResults();
-
-                List<ScanResult> finalResults = results;
-                activity.runOnUiThread(() -> {
-                    if (finalResults.isEmpty()) {
-                        final ArrayList<String> noTargets = new ArrayList<>();
-                        noTargets.add("No nearby WiFi networks");
-                        wifiNetworksList.setAdapter(new ArrayAdapter<>(requireContext(), android.R.layout.simple_list_item_1, noTargets));
-                        Snackbar.make(requireView(), "No nearby WiFi networks", Snackbar.LENGTH_SHORT).show();
-                    } else {
-                        ArrayList<String> scanResults = new ArrayList<>();
-                        for (ScanResult result : finalResults) {
-                            StringBuilder resultString = getStringBuilder(result);
-                            scanResults.add(resultString.toString());
-                        }
-                        arrayList.clear();
-                        arrayList.addAll(scanResults);
-                        sortBySignal(); // Sort by signal strength by default
-                    }
-                });
-
-                if (iswatch) {
-                    // Re-enabling bluetooth
-                    exe.RunAsRoot(new String[]{"svc bluetooth enable"});
-                }
+            if (iswatch) {
+                // Re-enabling bluetooth
+                exe.RunAsRoot(new String[]{"svc bluetooth enable"});
             }
         });
+    }
+
+    private List<String> filterScanResults(List<String> scanResults, String channelBand) {
+        List<String> filteredResults = new ArrayList<>();
+        for (String result : scanResults) {
+            int frequency = getFrequencyFromResult(result);
+            if (channelBand.equals("all") ||
+                    (channelBand.equals("2.4") && frequency >= 2400 && frequency <= 2500) ||
+                    (channelBand.equals("5") && frequency >= 5000 && frequency <= 6000)) {
+                filteredResults.add(result);
+            }
+        }
+        return filteredResults;
+    }
+
+    private int getFrequencyFromResult(String result) {
+        // Extract frequency from the result string
+        // Assuming the format is "Signal% - Channel - SSID - BSSID - ENC"
+        String[] parts = result.split(" - ");
+        return Integer.parseInt(parts[1]);
     }
 
     private void scheduleScan() {
