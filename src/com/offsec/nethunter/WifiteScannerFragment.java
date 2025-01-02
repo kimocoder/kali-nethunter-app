@@ -292,18 +292,18 @@ public class WifiteScannerFragment extends Fragment implements WifiteSettingFrag
                 for (int i = 0; i < parent.getChildCount(); i++) {
                     parent.getChildAt(i).setBackgroundColor(Color.TRANSPARENT); // Reset background color for all items
                 }
-                view.setBackgroundColor(Color.LTGRAY); // Set background color for selected item
+                view.setBackgroundColor(Color.WHITE); // Set background color for selected item
                 bottomNavigationView.getMenu().findItem(R.id.navigation_dashboard).setEnabled(true);
             }
 
             // Stop scanning for WiFi
             if (scanRunnable != null) {
-                Handler handler = new Handler();
                 handler.removeCallbacks(scanRunnable);
             }
 
             // Set the scanner time spinner to 'OFF'
             refreshIntervalSpinner.setSelection(0);
+            updateListView(); // Refresh the list view to apply the color change
         });
 
         return rootView;
@@ -429,8 +429,18 @@ public class WifiteScannerFragment extends Fragment implements WifiteSettingFrag
                 channel.setText(parts.length > 1 && !parts[1].isEmpty() ? parts[1] : "");
                 bssid.setText(parts.length > 2 && !parts[2].isEmpty() ? parts[2] : "");
                 encryption.setText(parts.length > 3 && !parts[3].isEmpty() ? parts[3] : "");
-                convertView.setBackgroundColor(Color.TRANSPARENT); // Reset background color for non-selected items
-                encryption.setTextColor(Color.parseColor("#FFA500")); // Set text color to orange for non-selected items
+
+                // Set text color to red only for the selected item
+                if (position == selectedPosition) {
+                    signal.setTextColor(Color.RED);
+                    channel.setTextColor(Color.RED);
+                    bssid.setTextColor(Color.RED);
+                    encryption.setTextColor(Color.RED);
+                    convertView.setBackgroundColor(Color.WHITE);
+                } else {
+                    convertView.setBackgroundColor(Color.TRANSPARENT);
+                }
+
                 return convertView;
             }
         };
