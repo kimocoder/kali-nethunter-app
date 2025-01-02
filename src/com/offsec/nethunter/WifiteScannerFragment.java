@@ -21,6 +21,16 @@ package com.offsec.nethunter;
 //
 // But callbacks and stdin/stdout are not supported in the current version of the app, but is planned for future versions.
 // So, we can implement the UI and the basic functions for now and wait for the next version to implement the callbacks and stdin/stdout.
+//
+// ACTIVE DEVELOPMENT IS ONGOING ON THE NETHUNTER APP, FEEL FREE TO CONTRIBUTE TO THE PROJECT:
+//
+// Suggestions for WifiteFragment
+//        If WifiteFragment is also using AsyncTask, it should be refactored similarly to use Executors. Here is a general approach:
+//        Replace AsyncTask with ExecutorService.
+//        Use executorService.execute() to run tasks in the background.
+//        Use activity.runOnUiThread() to update the UI from the background thread.
+//        This approach ensures better performance and maintainability.
+//
 
 import android.app.Activity;
 import android.content.Context;
@@ -29,7 +39,6 @@ import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.net.wifi.ScanResult;
 import android.net.wifi.WifiManager;
-import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Handler;
 import android.util.Log;
@@ -64,6 +73,8 @@ import com.google.android.material.snackbar.Snackbar;
 import com.offsec.nethunter.utils.ShellExecuter;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.net.NetworkInterface;
 import java.net.SocketException;
 import java.util.ArrayList;
@@ -76,6 +87,7 @@ import java.util.Objects;
 public class WifiteScannerFragment extends Fragment implements WifiteSettingFragment.SettingsDialogListener {
     public static final String TAG = "WifiScannerFragment";
     private static final String ARG_SECTION_NUMBER = "section_number";
+    private final ExecutorService executorService = Executors.newSingleThreadExecutor();
     private ListView wifiNetworksList;
     private final ArrayList<String> arrayList = new ArrayList<>();
     private Context context;
@@ -426,83 +438,83 @@ public class WifiteScannerFragment extends Fragment implements WifiteSettingFrag
     }
 
     private void scanWifi(boolean showNetworksWithoutSSID) {
-        AsyncTask.execute(() -> {
+        executorService.execute(() -> {
             Activity activity = getActivity();
             assert activity != null;
-            {
-                activity.runOnUiThread(() -> {
-                    // Disabling bluetooth so wifi will be definitely available for scanning
-                    if (iswatch) {
-                        exe.RunAsRoot(new String[]{"svc bluetooth disable;settings put system clockwork_wifi_setting on"});
-                    } else {
-                        exe.RunAsRoot(new String[]{"svc wifi enable"});
-                    }
-                    arrayList.clear();
-                    arrayList.add("Scanning...");
-                    wifiNetworksList.setAdapter(new ArrayAdapter<>(requireContext(), android.R.layout.simple_list_item_1, arrayList));
-                    wifiNetworksList.setVisibility(View.VISIBLE);
-                });
 
-                if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-                    return;
-                }
-
-                // Check if "iw" binary is available
-                boolean isIwAvailable = !exe.Executer("which iw").trim().isEmpty();
-
-                // Check if "wlan1" is available
-                boolean isWlan1Available = false;
-                try {
-                    Enumeration<NetworkInterface> interfaces = NetworkInterface.getNetworkInterfaces();
-                    while (interfaces.hasMoreElements()) {
-                        NetworkInterface networkInterface = interfaces.nextElement();
-                        if (networkInterface.isUp() && !networkInterface.isLoopback() && networkInterface.getName().equals("wlan1")) {
-                            isWlan1Available = true;
-                            break;
-                        }
-                    }
-                } catch (SocketException e) {
-                    Log.e(TAG, "Error getting network interfaces", e);
-                }
-
-                if (isIwAvailable && isWlan1Available) {
-                    // Use "iw" command to scan for networks on "wlan1"
-                    String[] scanCommand = {"iw", "dev", "wlan1", "scan"};
-                    String scanResults = exe.Executer(scanCommand); // Ensure Executer returns a String
-                    activity.runOnUiThread(() -> {
-                        if (scanResults.isEmpty()) {
-                            final ArrayList<String> noTargets = new ArrayList<>();
-                            noTargets.add("No nearby WiFi networks");
-                            wifiNetworksList.setAdapter(new ArrayAdapter<>(requireContext(), android.R.layout.simple_list_item_1, noTargets));
-                        } else {
-                            ArrayList<String> scanResultsList = new ArrayList<>(Arrays.asList(scanResults.split("\n")));
-                            arrayList.clear();
-                            arrayList.addAll(scanResultsList);
-                            sortBySignal(); // Sort by signal strength by default
-                        }
-                    });
+            activity.runOnUiThread(() -> {
+                // Disabling bluetooth so wifi will be definitely available for scanning
+                if (iswatch) {
+                    exe.RunAsRoot(new String[]{"svc bluetooth disable;settings put system clockwork_wifi_setting on"});
                 } else {
-                    // Use default WiFiManager to scan for networks on "wlan0"
-                    List<ScanResult> results = wifiManager.getScanResults();
-                    activity.runOnUiThread(() -> {
-                        if (results.isEmpty()) {
-                            final ArrayList<String> noTargets = new ArrayList<>();
-                            noTargets.add("No nearby WiFi networks");
-                            wifiNetworksList.setAdapter(new ArrayAdapter<>(requireContext(), android.R.layout.simple_list_item_1, noTargets));
-                        } else {
-                            ArrayList<String> scanResults = new ArrayList<>();
-                            for (ScanResult result : results) {
-                                if (showNetworksWithoutSSID || !result.SSID.isEmpty()) {
-                                    StringBuilder resultString = getStringBuilder(result);
-                                    scanResults.add(resultString.toString());
-                                }
-                            }
-                            arrayList.clear();
-                            arrayList.addAll(scanResults);
-                            sortBySignal(); // Sort by signal strength by default
-                        }
-                    });
+                    exe.RunAsRoot(new String[]{"svc wifi enable"});
                 }
+                arrayList.clear();
+                arrayList.add("Scanning...");
+                wifiNetworksList.setAdapter(new ArrayAdapter<>(requireContext(), android.R.layout.simple_list_item_1, arrayList));
+                wifiNetworksList.setVisibility(View.VISIBLE);
+            });
+
+            if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+                return;
+            }
+
+            // Check if "iw" binary is available
+            boolean isIwAvailable = !exe.Executer("which iw").trim().isEmpty();
+
+            // Check if "wlan1" is available
+            boolean isWlan1Available = false;
+            try {
+                Enumeration<NetworkInterface> interfaces = NetworkInterface.getNetworkInterfaces();
+                while (interfaces.hasMoreElements()) {
+                    NetworkInterface networkInterface = interfaces.nextElement();
+                    if (networkInterface.isUp() && !networkInterface.isLoopback() && networkInterface.getName().equals("wlan1")) {
+                        isWlan1Available = true;
+                        break;
+                    }
+                }
+            } catch (SocketException e) {
+                Log.e(TAG, "Error getting network interfaces", e);
+            }
+
+            if (isIwAvailable && isWlan1Available) {
+                // Use "iw" command to scan for networks on "wlan1"
+                String[] scanCommand = {"iw", "dev", "wlan1", "scan"};
+                String scanResults = exe.Executer(scanCommand); // Ensure Executer returns a String
+                activity.runOnUiThread(() -> {
+                    if (scanResults.isEmpty()) {
+                        final ArrayList<String> noTargets = new ArrayList<>();
+                        noTargets.add("No nearby WiFi networks");
+                        wifiNetworksList.setAdapter(new ArrayAdapter<>(requireContext(), android.R.layout.simple_list_item_1, noTargets));
+                    } else {
+                        ArrayList<String> scanResultsList = new ArrayList<>(Arrays.asList(scanResults.split("\n")));
+                        arrayList.clear();
+                        arrayList.addAll(scanResultsList);
+                        sortBySignal(); // Sort by signal strength by default
+                    }
+                });
+            } else {
+                // Use default WiFiManager to scan for networks on "wlan0"
+                List<ScanResult> results = wifiManager.getScanResults();
+                List<ScanResult> finalResults1 = results;
+                activity.runOnUiThread(() -> {
+                    if (finalResults1.isEmpty()) {
+                        final ArrayList<String> noTargets = new ArrayList<>();
+                        noTargets.add("No nearby WiFi networks");
+                        wifiNetworksList.setAdapter(new ArrayAdapter<>(requireContext(), android.R.layout.simple_list_item_1, noTargets));
+                    } else {
+                        ArrayList<String> scanResults = new ArrayList<>();
+                        for (ScanResult result : finalResults1) {
+                            if (showNetworksWithoutSSID || !result.SSID.isEmpty()) {
+                                StringBuilder resultString = getStringBuilder(result);
+                                scanResults.add(resultString.toString());
+                            }
+                        }
+                        arrayList.clear();
+                        arrayList.addAll(scanResults);
+                        sortBySignal(); // Sort by signal strength by default
+                    }
+                });
 
                 // Start WiFi scan
                 wifiManager.startScan();
@@ -510,17 +522,18 @@ public class WifiteScannerFragment extends Fragment implements WifiteSettingFrag
                     ActivityCompat.requestPermissions(getActivity(), new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, 1);
                     return;
                 }
-                List<ScanResult> results = wifiManager.getScanResults();
+                results = wifiManager.getScanResults();
 
+                List<ScanResult> finalResults = results;
                 activity.runOnUiThread(() -> {
-                    if (results.isEmpty()) {
+                    if (finalResults.isEmpty()) {
                         final ArrayList<String> noTargets = new ArrayList<>();
                         noTargets.add("No nearby WiFi networks");
                         wifiNetworksList.setAdapter(new ArrayAdapter<>(requireContext(), android.R.layout.simple_list_item_1, noTargets));
                         Snackbar.make(requireView(), "No nearby WiFi networks", Snackbar.LENGTH_SHORT).show();
                     } else {
                         ArrayList<String> scanResults = new ArrayList<>();
-                        for (ScanResult result : results) {
+                        for (ScanResult result : finalResults) {
                             StringBuilder resultString = getStringBuilder(result);
                             scanResults.add(resultString.toString());
                         }
