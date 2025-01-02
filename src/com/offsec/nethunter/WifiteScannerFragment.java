@@ -1,5 +1,27 @@
 package com.offsec.nethunter;
 
+//
+// THIS UI AND CODE WAS PROVIDED BY KIMOCODER WITH INSPIRATION FROM YESIMXEV
+// CREDITS: WIFITE WAS ORIGINALLY WRITTEN BY DERV82 (HTTPS://GITHUB.COM/DERV82/WIFITE)
+// FEEL FREE TO USE IT AND MODIFY IT AS YOU WISH, PARTICIPATE IN THE DEVELOPMENT OF THE TOOL
+//
+// TODO:
+// 1. Remove sort from SettingsDialogFragment and clean out the code
+// 2. Change to use "iw" command to scan for networks on all wireless devices (call from app binaries)
+//    - Use "iw" command to scan for networks on "wlan1" if available
+//    - Use default WiFiManager to scan for networks on "wlan0" if "iw" is not available
+// 3. Add USB connection check and prompt user to connect USB if not connected
+//    - Add an icon on the toolbar to indicate USB connection status
+// 4. When basic functions are done and tested, change the UI to a more
+//    console friendly than ListView (e.g. RecyclerView with custom adapter).
+//    using % in ListView is not console friendly and makes the console vulnerable to exceptions.
+// 5. Implement the "Attack" menu item to launch Wifite, call ShellExecuter to run the commands and display the output in a new fragment (if possible).
+//    we would need to add callbacks to the MainActivity to handle the output and display it in a new fragment, with a good console UI.
+//    - Add a new fragment to display the output of the Wifite commands
+//
+// But callbacks and stdin/stdout are not supported in the current version of the app, but is planned for future versions.
+// So, we can implement the UI and the basic functions for now and wait for the next version to implement the callbacks and stdin/stdout.
+
 import android.app.Activity;
 import android.content.Context;
 import android.content.SharedPreferences;
