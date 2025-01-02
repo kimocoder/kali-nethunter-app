@@ -1,8 +1,8 @@
 #!/system/bin/sh
 
-SCRIPT_PATH=$(readlink -f $0)
-. ${SCRIPT_PATH%/*}/bootkali_log
-. ${SCRIPT_PATH%/*}/bootkali_env
+SCRIPT_PATH=$(readlink -f "$0")
+. "${SCRIPT_PATH%/*}"/bootkali_log
+. "${SCRIPT_PATH%/*}"/bootkali_env
 
 #################################
 #### DEFINE GLOBAL VARIABLES ####
@@ -12,7 +12,7 @@ SCRIPT_PATH=$(readlink -f $0)
 unset MNT
 
 ## Define the fixed nhsystem path
-[ ! -d $NHSYSTEM_PATH ] && mkdir -p $NHSYSTEM_PATH
+[ ! -d "$NHSYSTEM_PATH" ] && mkdir -p "$NHSYSTEM_PATH"
 
 ## Validate busybox path.
 if [ -z "$BUSYBOX" ]; then
@@ -21,7 +21,7 @@ if [ -z "$BUSYBOX" ]; then
 fi
 
 ## Define the nethunter xz executable path.
-if [ ! -x $XZ ]; then
+if [ ! -x "$XZ" ]; then
     unset XZ
 fi
 
@@ -32,10 +32,10 @@ fi
 f_chroot_usage(){
     bklog "[!] Usage:"
     bklog "[!] chrootmgr [-p <your chroot folder>] -c \"getchtpath\" ---> return the string of current chroot container path."
-    bklog "[!] chrootmgr [-p <your chroot folder>] -c \"status\" ---> return 0 if chroot is mounted, return 1 if choot is not yet mounted, return 2 if no chroot is found."
+    bklog "[!] chrootmgr [-p <your chroot folder>] -c \"status\" ---> return 0 if chroot is mounted, return 1 if chroot is not yet mounted, return 2 if no chroot is found."
     bklog "[!] chrootmgr [-p <your chroot folder>] -c \"backup <full_path_of_your_chroot_folder> <full_path_with_desired_name.tar.[gx]z>\""
     bklog "[!] chrootmgr [-p <your chroot folder>] -c \"restore <full_path_of_your_.tar.[gx]z> </data/local/nhsystem/>\""
-    bklog "[!] chrootmgr [-p <your chroot folder>] -c \"remove <full_path_of_your_chroot_folder>\" ---> Delete your chroot folder without rebooting the device, but not 100% guranteed success"
+    bklog "[!] chrootmgr [-p <your chroot folder>] -c \"remove <full_path_of_your_chroot_folder>\" ---> Delete your chroot folder without rebooting the device, but not 100% guaranteed success"
     bklog "[!] chrootmgr -c \"sha512sum <URL of the checksum file> <the target file to be checked.>\" ---> Compare the sha512 checksum of the downloaded chroot and the official sha512 file."
     bklog "[!] If -p option is not specified, then the script will find the chroot path according to the app sharepreference."
 }
@@ -43,7 +43,7 @@ f_chroot_usage(){
 ## No use for now.
 f_mountfs(){
     export bin=/system/bin
-    export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:$PATH
+    export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:"$PATH"
     export TERM=linux
     export HOME=/root
     export USER=root
@@ -62,43 +62,43 @@ f_mountfs(){
         $BUSYBOX mknod /dev/net/tun c 10 200 && bklog "[+] created /dev/net/tun"
     fi
 
-    ######### SET DEV ########
-    if [ ! "$($BUSYBOX mountpoint $MNT/dev 2> /dev/null | grep 'is a')" ]; then
-        [ -d $MNT/dev ] && rm -rf $MNT/dev
-        [ ! -d $MNT/dev ] && mkdir -p $MNT/dev
-        $BUSYBOX mount -o bind /dev $MNT/dev && bklog "[+] binded /dev"
-    fi
+  ######### SET DEV ########
+if [ ! "$($BUSYBOX mountpoint ${MNT:?}/dev 2> /dev/null | grep 'is a')" ]; then
+    [ -d "${MNT:?}/dev" ] && rm -rf "${MNT:?}/dev"
+    [ ! -d "${MNT:?}/dev" ] && mkdir -p "${MNT:?}/dev"
+    $BUSYBOX mount -o bind /dev "${MNT:?}/dev" && bklog "[+] bound /dev"
+fi
 
     ######### SET DEV PTS ########
     if [ ! "$($BUSYBOX mountpoint $MNT/dev/pts 2> /dev/null | grep 'is a')" ]; then
-        $BUSYBOX mount -t devpts devpts $MNT/dev/pts && bklog "[+] mounted /dev/pts"
+        $BUSYBOX mount -t devpts devpts "$MNT"/dev/pts && bklog "[+] mounted /dev/pts"
     fi
 
     ######### SET DEV SHM ########
     if [ ! "$($BUSYBOX mountpoint $MNT/dev/shm 2> /dev/null | grep 'is a')" ]; then
-        [ ! -d $MNT/dev/shm ] && mkdir -p $MNT/dev/shm
-        $BUSYBOX mount -o rw,nosuid,nodev,mode=1777 -t tmpfs tmpfs $MNT/dev/shm && bklog "[+] mounted /dev/shm"
+        [ ! -d "$MNT"/dev/shm ] && mkdir -p "$MNT"/dev/shm
+        $BUSYBOX mount -o rw,nosuid,nodev,mode=1777 -t tmpfs tmpfs "$MNT"/dev/shm && bklog "[+] mounted /dev/shm"
     fi
 
     ######### SET PROC ########
     if [ ! "$($BUSYBOX mountpoint $MNT/proc 2> /dev/null | grep 'is a')" ]; then
-        [ -d $MNT/proc ] && rm -rf $MNT/proc
-        [ ! -d $MNT/proc ] && mkdir -p $MNT/proc
-        $BUSYBOX mount -t proc proc $MNT/proc && bklog "[+] mounted /proc"
+        [ -d "$MNT"/proc ] && rm -rf "$MNT"/proc
+        [ ! -d "$MNT"/proc ] && mkdir -p "$MNT"/proc
+        $BUSYBOX mount -t proc proc "$MNT"/proc && bklog "[+] mounted /proc"
     fi
 
     ######### SET SYS ########
     if [ ! "$($BUSYBOX mountpoint $MNT/sys 2> /dev/null | grep 'is a')" ]; then
-        [ -d $MNT/sys ] && rm -rf $MNT/sys
-        [ ! -d $MNT/sys ] && mkdir -p $MNT/sys
-        $BUSYBOX mount -t sysfs sys $MNT/sys && bklog "[+] mounted /sys"
+        [ -d "$MNT"/sys ] && rm -rf "$MNT"/sys
+        [ ! -d "$MNT"/sys ] && mkdir -p "$MNT"/sys
+        $BUSYBOX mount -t sysfs sys "$MNT"/sys && bklog "[+] mounted /sys"
     fi
 
     ######### SET SYS ########
     if [ ! "$($BUSYBOX mountpoint $MNT/system 2> /dev/null | grep 'is a')" ]; then
-        [ -d $MNT/system ] && rm -rf $MNT/system
-        [ ! -d $MNT/system ] && mkdir -p $MNT/system
-        $BUSYBOX mount -o bind /system $MNT/system && bklog "[+] binded /system"
+        [ -d "$MNT"/system ] && rm -rf "$MNT"/system
+        [ ! -d "$MNT"/system ] && mkdir -p "$MNT"/system
+        $BUSYBOX mount -o bind /system "$MNT"/system && bklog "[+] bound /system"
     fi
 }
 
@@ -121,15 +121,15 @@ fi
 
 if [ -z "$MNT" ]; then
     ## find the chroot path according to the nethunter app preference.
-    set -- ${COMMAND[@]}
-    MNT=`cat /data/data/$APP_PGK_NAME/shared_prefs/$APP_PGK_NAME.xml | grep "\"chroot_path\"" | $BUSYBOX sed "s/^.*\"chroot_path\">\(.*\)<\/string>/\1/g"`
+    set -- "${COMMAND[@]}"
+    MNT=$(cat /data/data/"$APP_PGK_NAME"/shared_prefs/"$APP_PGK_NAME".xml | grep "\"chroot_path\"" | $BUSYBOX sed "s/^.*\"chroot_path\">\(.*\)<\/string>/\1/g")
     if [ -z "$MNT" -a ! "$COMMAND" = "findchroot"  ]; then
         bklog "[-] The \$MNT variable is not defined, please run nethunter app first."
         exit 2
     fi
 else
     shift $((OPTIND-1))
-    set -- ${COMMAND[@]}
+    set -- "${COMMAND[@]}"
 fi
 
 if [ ! $# -eq 0 ]; then
@@ -138,7 +138,7 @@ if [ ! $# -eq 0 ]; then
             shift 1
             case $# in
                 0)
-                    echo $MNT
+                    echo "$MNT"
                     ;;
                 *)
                     f_chroot_usage
@@ -160,13 +160,13 @@ if [ ! $# -eq 0 ]; then
                     if [ "$($BUSYBOX chroot $MNT /bin/uname -n)" ]; then
                         bklog "[+] seems you have kali chroot installed already!"
                         ## Define chroot shell executable path.
-                        if [ -x $MNT/usr/bin/sudo ]; then
+                        if [ -x "$MNT"/usr/bin/sudo ]; then
                             CHROOT_EXEC=/usr/bin/sudo
                         else
                             bklog "[-] Your chroot has no \"sudo\" installed, installing now."
-                            sh ${SCRIPT_PATH%/*}/bootkali_init
-                            $BUSYBOX chroot $MNT /bin/bash -c 'apt update && apt install sudo -y'
-                            if [ ! -x $MNT$CHROOT_EXEC ]; then
+                            sh "${SCRIPT_PATH%/*}"/bootkali_init
+                            $BUSYBOX chroot "$MNT" /bin/bash -c 'apt update && apt install sudo -y'
+                            if [ ! -x "$MNT""$CHROOT_EXEC" ]; then
                                 bklog "[-] Seems the sudo is not installed successfully."
                                 bklog "[-] Make sure your Kali Chroot is not corrupted."
                                 exit 2
@@ -175,7 +175,7 @@ if [ ! $# -eq 0 ]; then
                         ISALLREADY=0
                         FS=(proc sys dev dev/pts system sdcard)
                         for i in "${FS[@]}"; do
-                            if [ "$($BUSYBOX grep $MNT/$i /proc/mounts)" ]; then
+                            if [ "$($BUSYBOX grep "$MNT"/"$i" /proc/mounts)" ]; then
                                 bklog "[+] $i was mounted already."
                                 continue
                             else
@@ -212,7 +212,7 @@ if [ ! $# -eq 0 ]; then
                     fi
                     [ ! -d $1 ] && bklog "[-] $1 not found, please check again." && exit 1;
                     ## [ -e $2 ] && bklog "[-] Found existing $2, please rename it first." && exit 1;
-                    TARGET_DIR=`echo "$1" | $BUSYBOX sed "s/\(\/\+\)$//g" | $BUSYBOX awk -F/ '{print $NF}'`
+                    TARGET_DIR=$(echo "$1" | $BUSYBOX sed "s/\(\/\+\)$//g" | $BUSYBOX awk -F/ "{print $NF}")
                     if chrootmgr -c "status"; then
                         bklog "[!] Chroot is mounted! Running killkali to make sure no kali service or process is being run."
                         if ! killkali; then
@@ -223,17 +223,17 @@ if [ ! $# -eq 0 ]; then
                         bklog "[!] Chroot is already unmounted."
                     fi
                     bklog "[!] Creating chroot backup from \"$TARGET_DIR\" to \"$2\", please be patient until it is finished.."
-                    cd $1/../ || exit
-                    if echo $2 | $BUSYBOX grep -q ".tar.gz$"; then
-                        $BUSYBOX tar czf $2 $TARGET_DIR
+                    cd "$1"/../ || exit
+                    if echo "$2" | $BUSYBOX grep -q ".tar.gz$"; then
+                        $BUSYBOX tar czf "$2" "$TARGET_DIR"
                         $BUSYBOX sync
-                    elif echo $2 | grep -q ".tar.xz$"; then
+                    elif echo "$2" | grep -q ".tar.xz$"; then
                         if [ -z "$XZ" ]; then
                             bklog "[-] Sorry, you must use /data/data/com.offsec.nethunter/scripts/bin/xz to get xz work here."
                             bklog "[-] Or check if the execute permission of xz is granted."
                             bklog "[-] Or please choose to compress with .tar.gz instead."
                         else
-                            $BUSYBOX tar cf - $TARGET_DIR | $XZ -z - > $2
+                            $BUSYBOX tar cf - "$TARGET_DIR" | $XZ -z - > "$2"
                         fi
                     fi
                     bklog "[+] Done! $2 has been created."
@@ -248,171 +248,162 @@ if [ ! $# -eq 0 ]; then
             shift 1
             case $# in
                 2)
-                    TARGET_TARBALL_PATH=$1
-                    TARGET_CHROOT_DIR_NAME=$2
+        TARGET_TARBALL_PATH="$1"
+        TARGET_CHROOT_DIR_NAME="$2"
 
-                    bklog "[!] Checking...Please stay on the screen until process completes."
-                    if ! echo $TARGET_TARBALL_PATH | grep -q ".tar.[gx]z$"; then
-                        bklog "[-] Invalid filename, make sure it is followed by .tar.gz or .tar.xz"
-                        exit 1
-                    fi
-                    [ ! -e $TARGET_TARBALL_PATH ] && bklog "[-] $TARGET_TARBALL_PATH not found, please check again." && exit 1;
-                    [ ! "$(echo $TARGET_CHROOT_DIR_NAME | $BUSYBOX grep -E '^/data/local/nhsystem/')" ] && bklog "[-] The chroot folder must be extracted to /data/local/nhsystem/" && exit 1;
-                    if [ -d $TARGET_CHROOT_DIR_NAME ]; then
-                        if [ "$(ls -A $TARGET_CHROOT_DIR_NAME)" ]; then
-                            bklog "[-] $TARGET_CHROOT_DIR_NAME is not a empty directory, please either delete the whole folder or all the files in it first."
-                            exit 1
-                        fi
-                        rmdir $TARGET_CHROOT_DIR_NAME
-                    fi
-                    while true; do
-                        TEMP_EXTRACT_DIR="$TARGET_CHROOT_DIR_NAME$RANDOM$RANDOM"
-                        if [ ! -d $TEMP_EXTRACT_DIR ]; then
-                            if mkdir -p "$TEMP_EXTRACT_DIR"; then
-                                break;
-                            else
-                                bklog "[-] Something goes wrong!?"
-                                exit 1
-                            fi
-                        fi
-                    done
-                    bklog "[!] Kali Chroot requires at least 8 Gb of free space just to make sure it won't break your system."
-                    bklog "[!] Checking storage capacity...."
-                    SDCARD_PARTITION=$(mount | grep sdcardfs | $BUSYBOX awk '{print $1}' | head -n1)
-                    AVAILABLESIZE=$(df $SDCARD_PARTITION | tail -n1 | $BUSYBOX awk '{s=$4} END{print (s/1024)}' | sed 's/\..*$//')
-                    #if echo $TARGET_TARBALL_PATH | grep -q ".tar.gz$"; then
-                    #    TARFILESIZE=$($BUSYBOX tar tzvf $TARGET_TARBALL_PATH | $BUSYBOX awk '{s+=$3} END{print (s/1024/1024)}' | sed 's/\..*$//')
-                    #elif echo $TARGET_TARBALL_PATH | grep -q ".tar.xz$"; then
-                    #    TARFILESIZE=$($BUSYBOX tar tJvf $TARGET_TARBALL_PATH | $BUSYBOX awk '{s+=$3} END{print (s/1024/1024)}' | sed 's/\..*$//')
-                    #fi
-                    bklog "[!] Available size of $SDCARD_PARTITION partition: $AVAILABLESIZE MB"
-                    #bklog "[!] Actual content size of $TARGET_TARBALL_PATH is $TARFILESIZE MB"
-                    if [ ! $AVAILABLESIZE -gt 8000 ]; then
-                        bklog "[-] You don't have enough spaces for installing the chroot!!"
-                        exit 1
-                    fi
-                    bklog "[!] Restoring the chroot backup from \"$TARGET_TARBALL_PATH\" to \"$TARGET_CHROOT_DIR_NAME\""
-                    bklog "[!] It may take a while, please be patient until it is finished extracting.."
+        bklog "[!] Checking...Please stay on the screen until process completes."
+        if ! echo "$TARGET_TARBALL_PATH" | grep -q ".tar.[gx]z$"; then
+            bklog "[-] Invalid filename, make sure it is followed by .tar.gz or .tar.xz"
+            exit 1
+        fi
+        [ ! -e "$TARGET_TARBALL_PATH" ] && bklog "[-] $TARGET_TARBALL_PATH not found, please check again." && exit 1
+        [ ! "$(echo "$TARGET_CHROOT_DIR_NAME" | $BUSYBOX grep -E '^/data/local/nhsystem/')" ] && bklog "[-] The chroot folder must be extracted to /data/local/nhsystem/" && exit 1
+        if [ -d "$TARGET_CHROOT_DIR_NAME" ]; then
+            if [ "$(ls -A "$TARGET_CHROOT_DIR_NAME")" ]; then
+                bklog "[-] $TARGET_CHROOT_DIR_NAME is not an empty directory, please either delete the whole folder or all the files in it first."
+                exit 1
+            fi
+            rmdir "$TARGET_CHROOT_DIR_NAME"
+        fi
+        while true; do
+            TEMP_EXTRACT_DIR="$TARGET_CHROOT_DIR_NAME$RANDOM$RANDOM"
+            if [ ! -d "$TEMP_EXTRACT_DIR" ]; then
+                if mkdir -p "$TEMP_EXTRACT_DIR"; then
+                    break
+                else
+                    bklog "[-] Something goes wrong!?"
+                    exit 1
+                fi
+            fi
+        done
+        bklog "[!] Kali Chroot requires at least 8 Gb of free space just to make sure it won't break your system."
+        bklog "[!] Checking storage capacity...."
+        SDCARD_PARTITION=$(mount | grep sdcardfs | $BUSYBOX awk "{print $1}" | head -n1)
+        AVAILABLESIZE=$(df "$SDCARD_PARTITION" | tail -n1 | $BUSYBOX awk "{s=$4} END{print (s/1024)}" | sed 's/\..*$//')
+        bklog "[!] Available size of $SDCARD_PARTITION partition: $AVAILABLESIZE MB"
+        if [ ! "$AVAILABLESIZE" -gt 8000 ]; then
+            bklog "[-] You don't have enough spaces for installing the chroot!!"
+            exit 1
+        fi
+        bklog "[!] Restoring the chroot backup from \"$TARGET_TARBALL_PATH\" to \"$TARGET_CHROOT_DIR_NAME\""
+        bklog "[!] It may take a while, please be patient until it is finished extracting.."
 
-                    if echo $TARGET_TARBALL_PATH | $BUSYBOX grep -q ".tar.gz$"; then
-                        TARBALL_ROOTDIR_NAME=$($BUSYBOX tar -tf $TARGET_TARBALL_PATH | $BUSYBOX sed -e 's@/.*@@' | uniq | $BUSYBOX sed 's/\/.*$//')
-                        if [ $(echo $TARBALL_ROOTDIR_NAME | $BUSYBOX sed 's/ /\n/g' | wc -l) -eq 1 ]; then
-                            $BUSYBOX tar xzf $TARGET_TARBALL_PATH -C `echo "$TEMP_EXTRACT_DIR" | $BUSYBOX sed "s/\(\/\+\)$//g"`/ --exclude `echo "$TARBALL_ROOTDIR_NAME/dev"`
-                            $BUSYBOX sync
-                        else
-                            bklog "[-] $TARGET_TARBALL_PATH is not a valid tarball file for Kali Chroot, make sure there is only one root directory at the top level of the tarball file."
-                        fi
-                    elif echo $TARGET_TARBALL_PATH | $BUSYBOX grep -q ".tar.xz$"; then
-                        TARBALL_ROOTDIR_NAME=$($BUSYBOX tar -tf $TARGET_TARBALL_PATH | $BUSYBOX sed -e 's@/.*@@' | $BUSYBOX uniq | $BUSYBOX sed 's/\/.*$//')
-                        if [ $(echo $TARBALL_ROOTDIR_NAME | $BUSYBOX sed 's/ /\n/g' | wc -l) -eq 1 ]; then
-                            $BUSYBOX tar xJf $TARGET_TARBALL_PATH -C `echo "$TEMP_EXTRACT_DIR" | $BUSYBOX sed "s/\(\/\+\)$//g"`/ --exclude `echo "$TARBALL_ROOTDIR_NAME/dev"`
-                            $BUSYBOX sync
-                        else
-                            bklog "[-] $TARGET_TARBALL_PATH is not a valid tarball file for Kali Chroot, make sure there is only one root directory at the top level of the tarball file."
-                        fi
-                    fi
-                    mv "$TEMP_EXTRACT_DIR/$TARBALL_ROOTDIR_NAME" "$TARGET_CHROOT_DIR_NAME"
-                    rmdir "$TEMP_EXTRACT_DIR"
-                    bklog "[+] Chroot has been installed."
-                    return 0
-                    ;;
-                *)
-                    f_chroot_usage
-                    ;;
-            esac
-            ;;
-        download)
-            shift 1
-            case $# in
-                2)
-                    TARGET_DOWNLOAD_FILE_URL=$1
-                    TARGET_DOWNLOAD_DIR=$2
-                    [ -z "$TARGET_DOWNLOAD_FILE_URL" -o -z "$TARGET_DOWNLOAD_DIR" ] && f_chroot_usage && exit 1
-                    [ ! -d "$TARGET_DOWNLOAD_DIR" ] && bklog "[-] $TARGET_DOWNLOAD_DIR not existed." && exit 1
-                    $BUSYBOX wget $TARGET_DOWNLOAD_FILE_URL -P $TARGET_DOWNLOAD_DIR
-                    ;;
-                *)
-                    f_chroot_usage
-                    ;;
-            esac
-            ;;
-        remove)
-            shift 1
-            case $# in
-                1)
-                    [ ! -d $MNT ] && bklog "[-] \"$MNT\" directory not existed! Please check again first!" && exit 1
-                    $SOURCE_PATH/killkali
-                    [ $? -eq 1 ] && bklog "[-] Failed to umount the chroot environment..Aborted." && exit 1
-                    bklog "[!] Removing $MNT now....It may take a while, be patient."
-                    $BUSYBOX find $MNT -type l -exec rm -rf {} \;
-                    if rm -rf $MNT; then
-                        $BUSYBOX sync
-                        bklog "[+] The chroot directory \"$MNT\" has been removed successfully."
-                    fi
-                    ;;
-                *)
-                    f_chroot_usage
-                    ;;
-            esac
-            ;;
-        findchroot)
-            shift 1
-            case $# in
-                0)
-                    CHROOT_ARCH=($($BUSYBOX find $NHSYSTEM_PATH -type d -maxdepth 1 -exec $BUSYBOX basename {} \; | $BUSYBOX grep -E '^[^nhsystem]'))
-                    if [ $(echo ${#CHROOT_ARCH[@]}) -eq 1 ]; then
-                        if [ "$($BUSYBOX chroot $NHSYSTEM_PATH/$CHROOT_ARCH /bin/uname -n)" ]; then
-                            echo $CHROOT_ARCH
-                        fi
-                    elif [ $(echo ${#CHROOT_ARCH[@]}) -gt 1 ]; then
-                        for CHROOT_COUNT in $(seq 0 ${#CHROOT_ARCH[@]}); do
-                            if [ ! "$($BUSYBOX chroot $NHSYSTEM_PATH/${CHROOT_ARCH[$CHROOT_COUNT]} /bin/uname -n)" ]; then
-                                unset CHROOT_ARCH[$CHROOT_COUNT]
-                            fi
-                        done
-                        echo ${CHROOT_ARCH[@]} | sed 's/ /\n/g'
-                    else
-                        echo ""
-                    fi
-                    ;;
-                *)
-                    f_chroot_usage
-                    ;;
-            esac
-            ;;
-        checksha512)
-            shift 1
-            case $# in
-                2)
-                    # official link for chroot image -> http://kali.download/nethunter-images/current/rootfs/
-                    # kalifs-arm64-full.tar.xz | kalifs-arm64-minimal.tar.xz | kalifs-arm64-nano.tar.xz
-                    # kalifs-armhf-full.tar.xz | kalifs-armhf-minimal.tar.xz | kalifs-armhf-nano.tar.xz
-                    local SHAFILE_URL_LINK=$1
-                    local TARGET_FILE=$2
-                    local CORRECT_SHA
-                    local COMPUTED_SHA
-                    bklog "[!] Now checking the sha512 for $TARGET_FILE.."
-                    CORRECT_SHA="$($BUSYBOX wget $SHAFILE_URL_LINK -q -O -)"
-                    bklog "$CORRECT_SHA"
-                    COMPUTED_SHA="$($BUSYBOX sha512sum $TARGET_FILE | sed 's/ .*\//  /g')"
-                    bklog "$COMPUTED_SHA"
-                    if [ "$CORRECT_SHA" = "$COMPUTED_SHA" ]; then
-                        bklog "[+] Checksum matches!"
-                        return 0
-                    else
-                        bklog "[-] Checksum mismatches! the downloaded file may be compromised already!! Please contact the nethunter devs for help."
-                        return 1
-                    fi
-                    ;;
-                *)
-                    f_chroot_usage
-                    ;;
-            esac
+        if echo "$TARGET_TARBALL_PATH" | $BUSYBOX grep -q ".tar.gz$"; then
+            TARBALL_ROOTDIR_NAME=$($BUSYBOX tar -tf "$TARGET_TARBALL_PATH" | $BUSYBOX sed -e 's@/.*@@' | uniq | $BUSYBOX sed 's/\/.*$//')
+            if [ $(echo "$TARBALL_ROOTDIR_NAME" | $BUSYBOX sed 's/ /\n/g' | wc -l) -eq 1 ]; then
+                $BUSYBOX tar xzf "$TARGET_TARBALL_PATH" -C "$(echo "$TEMP_EXTRACT_DIR" | $BUSYBOX sed "s/\(\/\+\)$//g")/" --exclude "$(echo "$TARBALL_ROOTDIR_NAME/dev")"
+                $BUSYBOX sync
+            else
+                bklog "[-] $TARGET_TARBALL_PATH is not a valid tarball file for Kali Chroot, make sure there is only one root directory at the top level of the tarball file."
+            fi
+        elif echo "$TARGET_TARBALL_PATH" | $BUSYBOX grep -q ".tar.xz$"; then
+            TARBALL_ROOTDIR_NAME=$($BUSYBOX tar -tf "$TARGET_TARBALL_PATH" | $BUSYBOX sed -e 's@/.*@@' | $BUSYBOX uniq | $BUSYBOX sed 's/\/.*$//')
+            if [ $(echo "$TARBALL_ROOTDIR_NAME" | $BUSYBOX sed 's/ /\n/g' | wc -l) -eq 1 ]; then
+                $BUSYBOX tar xJf "$TARGET_TARBALL_PATH" -C "$(echo "$TEMP_EXTRACT_DIR" | $BUSYBOX sed "s/\(\/\+\)$//g")/" --exclude "$(echo "$TARBALL_ROOTDIR_NAME/dev")"
+                $BUSYBOX sync
+            else
+                bklog "[-] $TARGET_TARBALL_PATH is not a valid tarball file for Kali Chroot, make sure there is only one root directory at the top level of the tarball file."
+            fi
+        fi
+        mv "$TEMP_EXTRACT_DIR/$TARBALL_ROOTDIR_NAME" "$TARGET_CHROOT_DIR_NAME"
+        rmdir "$TEMP_EXTRACT_DIR"
+        bklog "[+] Chroot has been installed."
+        return 0
+        ;;
+    *)
+        f_chroot_usage
+        ;;
+esac
+;;
+download)
+    shift 1
+    case $# in
+        2)
+            TARGET_DOWNLOAD_FILE_URL="$1"
+            TARGET_DOWNLOAD_DIR="$2"
+            [ -z "$TARGET_DOWNLOAD_FILE_URL" -o -z "$TARGET_DOWNLOAD_DIR" ] && f_chroot_usage && exit 1
+            [ ! -d "$TARGET_DOWNLOAD_DIR" ] && bklog "[-] $TARGET_DOWNLOAD_DIR not existed." && exit 1
+            $BUSYBOX wget "$TARGET_DOWNLOAD_FILE_URL" -P "$TARGET_DOWNLOAD_DIR"
             ;;
         *)
             f_chroot_usage
             ;;
     esac
+    ;;
+remove)
+    shift 1
+    case $# in
+        1)
+            [ ! -d "$MNT" ] && bklog "[-] \"$MNT\" directory not existed! Please check again first!" && exit 1
+            "$SOURCE_PATH"/killkali
+            [ $? -eq 1 ] && bklog "[-] Failed to umount the chroot environment..Aborted." && exit 1
+            bklog "[!] Removing $MNT now....It may take a while, be patient."
+            $BUSYBOX find "$MNT" -type l -exec rm -rf {} \;
+            if rm -rf "$MNT"; then
+                $BUSYBOX sync
+                bklog "[+] The chroot directory \"$MNT\" has been removed successfully."
+            fi
+            ;;
+        *)
+            f_chroot_usage
+            ;;
+    esac
+    ;;
+findchroot)
+    shift 1
+    case $# in
+        0)
+            CHROOT_ARCH=($($BUSYBOX find "$NHSYSTEM_PATH" -type d -maxdepth 1 -exec $BUSYBOX basename {} \; | $BUSYBOX grep -E '^[^nhsystem]'))
+            if [ ${#CHROOT_ARCH[@]} -eq 1 ]; then
+                if $BUSYBOX chroot "$NHSYSTEM_PATH/${CHROOT_ARCH[0]}" /bin/uname -n; then
+                    echo "${CHROOT_ARCH[0]}"
+                fi
+            elif [ ${#CHROOT_ARCH[@]} -gt 1 ]; then
+                for CHROOT_COUNT in "${!CHROOT_ARCH[@]}"; do
+                    if ! $BUSYBOX chroot "$NHSYSTEM_PATH/${CHROOT_ARCH[$CHROOT_COUNT]}" /bin/uname -n; then
+                        unset 'CHROOT_ARCH[$CHROOT_COUNT]'
+                    fi
+                done
+                printf '%s\n' "${CHROOT_ARCH[@]}"
+            else
+                echo ""
+            fi
+            ;;
+        *)
+            f_chroot_usage
+            ;;
+    esac
+    ;;
+checksha512)
+    shift 1
+    case $# in
+        2)
+            local SHAFILE_URL_LINK="$1"
+            local TARGET_FILE="$2"
+            local CORRECT_SHA
+            local COMPUTED_SHA
+            bklog "[!] Now checking the sha512 for $TARGET_FILE.."
+            CORRECT_SHA="$($BUSYBOX wget "$SHAFILE_URL_LINK" -q -O -)"
+            bklog "$CORRECT_SHA"
+            COMPUTED_SHA="$($BUSYBOX sha512sum "$TARGET_FILE" | sed 's/ .*\//  /g')"
+            bklog "$COMPUTED_SHA"
+            if [ "$CORRECT_SHA" = "$COMPUTED_SHA" ]; then
+                bklog "[+] Checksum matches!"
+                return 0
+            else
+                bklog "[-] Checksum mismatches! the downloaded file may be compromised already!! Please contact the nethunter devs for help."
+                return 1
+            fi
+            ;;
+        *)
+            f_chroot_usage
+            ;;
+    esac
+    ;;
+*)
+    f_chroot_usage
+    ;;
+esac
 else
     bklog "[-] No args passed to chrootmgr."
 fi
