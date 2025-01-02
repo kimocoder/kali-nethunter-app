@@ -32,6 +32,7 @@ package com.offsec.nethunter;
 //        This approach ensures better performance and maintainability.
 //
 
+
 import android.app.Activity;
 import android.content.Context;
 import android.content.SharedPreferences;
@@ -150,7 +151,7 @@ public class WifiteScannerFragment extends Fragment implements WifiteSettingFrag
         // Initialize SwipeRefreshLayout
         swipeRefreshLayout = rootView.findViewById(R.id.swipe_refresh_layout);
         swipeRefreshLayout.setOnRefreshListener(() -> {
-            scanWifi(true);
+            scanWifi(true, "all");
             swipeRefreshLayout.setRefreshing(false);
         });
 
@@ -251,7 +252,26 @@ public class WifiteScannerFragment extends Fragment implements WifiteSettingFrag
         // Populate Spinner with available WiFi channels
         List<String> wifiChannels = Arrays.asList("All Channels", "2.4 ghz channels", "5 ghz channels", "6 ghz channels");
 
-        ArrayAdapter<String> channelAdapter = new ArrayAdapter<>(requireContext(), android.R.layout.simple_spinner_item, wifiChannels);
+        ArrayAdapter<String> channelAdapter = new ArrayAdapter<>(requireContext(), android.R.layout.simple_spinner_item, wifiChannels) {
+            @Override
+            public boolean isEnabled(int position) {
+                // Disable the "6 ghz channels" option for now
+                return position != 3;
+            }
+
+            @Override
+            public View getDropDownView(int position, @Nullable View convertView, @NonNull ViewGroup parent) {
+                View view = super.getDropDownView(position, convertView, parent);
+                TextView tv = (TextView) view;
+                if (position == 3) {
+                    // Set the text color to gray for the disabled item
+                    tv.setTextColor(Color.GRAY);
+                } else {
+                    tv.setTextColor(Color.WHITE);
+                }
+                return view;
+            }
+        };
         channelAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         wifiChannel.setAdapter(channelAdapter);
 
@@ -261,18 +281,23 @@ public class WifiteScannerFragment extends Fragment implements WifiteSettingFrag
                 switch (position) {
                     case 0:
                         // Handle "All Channels"
+                        scanWifi(true, "all");
                         break;
                     case 1:
                         // Handle "2.4 ghz channels"
+                        scanWifi(true, "2.4");
                         break;
                     case 2:
                         // Handle "5 ghz channels"
+                        scanWifi(true, "5");
                         break;
                     case 3:
-                        // Handle "6 ghz channels"
+                        // todo: Handle "6 ghz channels" by adding a device check rather.
+                        // Handle "6 ghz channels" (disabled for now)
                         break;
                 }
             }
+
             @Override
             public void onNothingSelected(AdapterView<?> parent) {
                 // Do nothing
@@ -333,7 +358,7 @@ public class WifiteScannerFragment extends Fragment implements WifiteSettingFrag
 
     @Override
     public void onSettingsChanged(boolean showNetworksWithoutSSID) {
-        scanWifi(showNetworksWithoutSSID);
+        scanWifi(showNetworksWithoutSSID, "all");
     }
 
     @NonNull
@@ -447,7 +472,7 @@ public class WifiteScannerFragment extends Fragment implements WifiteSettingFrag
         wifiNetworksList.setAdapter(adapter);
     }
 
-    private void scanWifi(boolean showNetworksWithoutSSID) {
+    private void scanWifi(boolean showNetworksWithoutSSID, String all) {
         executorService.execute(() -> {
             Activity activity = getActivity();
             assert activity != null;
@@ -569,7 +594,7 @@ public class WifiteScannerFragment extends Fragment implements WifiteSettingFrag
             scanRunnable = new Runnable() {
                 @Override
                 public void run() {
-                    scanWifi(true);
+                    scanWifi(true, "all");
                     handler.postDelayed(this, refreshInterval);
                 }
             };
