@@ -15,7 +15,7 @@ buildscript {
     }
     dependencies {
         //noinspection AndroidGradlePluginVersion
-        classpath 'com.android.tools.build:gradle:8.9.3'
+        classpath 'com.android.tools.build:gradle:8.10.1'
     }
 }
 
@@ -75,6 +75,7 @@ android {
                 // cppFlags "-O2"
             }
         }
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
 
     signingConfigs {
@@ -95,6 +96,8 @@ android {
             res.srcDirs = ['res']
             assets.srcDirs = ['assets']
             // If you later add prebuilt .so files, place them under src/main/jniLibs/<abi>/
+            // Prevent accidental compilation of androidTest files placed under src/androidTest/**
+            java.exclude 'androidTest/**'
         }
     }
 
@@ -133,9 +136,17 @@ dependencies {
     implementation 'com.google.android.material:material:1.13.0'
     implementation 'androidx.preference:preference:1.2.1'
     implementation 'androidx.viewpager2:viewpager2:1.1.0'
-    implementation 'androidx.navigation:navigation-runtime:2.9.5'
+    implementation 'androidx.navigation:navigation-runtime:2.9.6'
     // Snowfall
     implementation 'com.github.jetradarmobile:android-snowfall:1.2.1'
     //debugImplementation 'com.squareup.leakcanary:leakcanary-android:3.0-alpha-8'
     coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.1.5'
+
+    // AndroidX test dependencies for instrumented tests (Espresso)
+    androidTestImplementation 'androidx.test.ext:junit:1.3.0'
+    androidTestImplementation 'androidx.test:runner:1.7.0'
+    androidTestImplementation 'androidx.test.espresso:espresso-core:3.7.0'
+    // Fragment testing utilities (allows FragmentScenario)
+    // It's common to include fragment-testing as debugImplementation as well for local debug tests
+    debugImplementation 'androidx.fragment:fragment-testing:1.8.9'
 }
