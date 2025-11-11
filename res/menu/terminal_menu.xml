@@ -4,14 +4,20 @@
     <item
         android:id="@+id/action_search"
         android:icon="@drawable/ic_search_black_24dp"
-        android:title="Search"
+        android:title="@string/terminal_search"
         app:actionViewClass="androidx.appcompat.widget.SearchView"
+        app:showAsAction="ifRoom" />
+
+    <item
+        android:id="@+id/action_fullscreen"
+        android:icon="@drawable/ic_fullscreen"
+        android:title="@string/terminal_fullscreen"
         app:showAsAction="ifRoom" />
 
     <item
         android:id="@+id/action_theme"
         android:icon="@drawable/ic_palette"
-        android:title="Theme"
+        android:title="@string/terminal_theme"
         app:showAsAction="ifRoom" />
 
     <item
@@ -28,14 +34,16 @@
 
     <item
         android:id="@+id/action_save_output"
-        android:title="Save output"
+        android:title="@string/terminal_save_output"
         app:showAsAction="never" />
+
     <item
         android:id="@+id/action_print_dmesg"
-        android:title="Print dmesg"
+        android:title="@string/terminal_print_dmesg"
         app:showAsAction="never" />
+
     <item
         android:id="@+id/action_restart"
-        android:title="Restart Terminal"
+        android:title="@string/terminal_restart_terminal"
         app:showAsAction="never" />
 </menu>

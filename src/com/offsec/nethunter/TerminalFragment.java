@@ -32,6 +32,7 @@ import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
+import android.view.MotionEvent;
 import android.view.ScaleGestureDetector;
 import android.view.View;
 import android.view.ViewGroup;
@@ -110,6 +111,7 @@ public class TerminalFragment extends Fragment implements MenuProvider {
     private View ctrlButton;
     private com.google.android.material.floatingactionbutton.FloatingActionButton fabGoBottom;
     private com.google.android.material.floatingactionbutton.FloatingActionButton fabCopySelected;
+    private com.google.android.material.floatingactionbutton.FloatingActionButton fabFullscreen;
     private Process process;
     private volatile OutputStream outputStream;
     private static volatile BufferedWriter writer;
@@ -144,6 +146,8 @@ public class TerminalFragment extends Fragment implements MenuProvider {
     private TerminalService boundService;
     private boolean serviceBound = false;
     private int serviceSessionId = -1;
+    private boolean isFullscreen = false;
+    private MenuItem fullscreenMenuItem;
 
     private static class ThemePreset {
         final String name; final int bg; final int fg;
@@ -285,6 +289,13 @@ public class TerminalFragment extends Fragment implements MenuProvider {
                 fabCopySelected.hide();
                 if (terminalRecycler != null) terminalRecycler.requestFocus();
             });
+        }
+
+        fabFullscreen = view.findViewById(R.id.fab_fullscreen);
+        if (fabFullscreen != null) {
+            fabFullscreen.setOnClickListener(v -> toggleFullscreen());
+            updateFullscreenFabIcon();
+            makeFabDraggable(fabFullscreen);
         }
 
         terminalRecycler.addOnScrollListener(new RecyclerView.OnScrollListener() {
@@ -954,6 +965,11 @@ public class TerminalFragment extends Fragment implements MenuProvider {
     @Override
     public void onCreateMenu(@NonNull Menu menu, @NonNull MenuInflater menuInflater) {
         menuInflater.inflate(R.menu.terminal_menu, menu);
+        
+        // Store fullscreen menu item reference
+        fullscreenMenuItem = menu.findItem(R.id.action_fullscreen);
+        updateFullscreenIcon();
+        
         MenuItem searchItem = menu.findItem(R.id.action_search);
         if (searchItem != null) {
             View actionView = searchItem.getActionView();
@@ -970,7 +986,8 @@ public class TerminalFragment extends Fragment implements MenuProvider {
     @Override
     public boolean onMenuItemSelected(@NonNull MenuItem menuItem) {
         int id = menuItem.getItemId();
-        if (id == R.id.action_restart) { restartTerminal(); return true; }
+        if (id == R.id.action_fullscreen) { toggleFullscreen(); return true; }
+        else if (id == R.id.action_restart) { restartTerminal(); return true; }
         else if (id == R.id.action_print_dmesg) { printDmesg(); return true; }
         else if (id == R.id.action_search) { performSearch(); return true; }
         else if (id == R.id.action_save_output) { saveOutput(); return true; }
@@ -1067,6 +1084,149 @@ public class TerminalFragment extends Fragment implements MenuProvider {
         }).start();
     }
 
+    private void toggleFullscreen() {
+        isFullscreen = !isFullscreen;
+        updateFullscreenIcon();
+        updateFullscreenFabIcon();
+        
+        if (getActivity() instanceof AppCompatActivity) {
+            AppCompatActivity activity = (AppCompatActivity) getActivity();
+            View decorView = activity.getWindow().getDecorView();
+            
+            if (isFullscreen) {
+                // Enter fullscreen mode
+                int uiOptions = View.SYSTEM_UI_FLAG_FULLSCREEN
+                        | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+                        | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY;
+                decorView.setSystemUiVisibility(uiOptions);
+                
+                // Hide action bar
+                if (activity.getSupportActionBar() != null) {
+                    activity.getSupportActionBar().hide();
+                }
+                
+                // Show fullscreen FAB (to allow exiting fullscreen)
+                if (fabFullscreen != null) {
+                    fabFullscreen.show();
+                }
+            } else {
+                // Exit fullscreen mode
+                decorView.setSystemUiVisibility(View.SYSTEM_UI_FLAG_VISIBLE);
+                
+                // Show action bar
+                if (activity.getSupportActionBar() != null) {
+                    activity.getSupportActionBar().show();
+                }
+                
+                // Hide fullscreen FAB (menu is available again)
+                if (fabFullscreen != null) {
+                    fabFullscreen.hide();
+                }
+            }
+        }
+    }
+
+    private void updateFullscreenIcon() {
+        if (fullscreenMenuItem != null) {
+            if (isFullscreen) {
+                fullscreenMenuItem.setIcon(R.drawable.ic_fullscreen_exit);
+                fullscreenMenuItem.setTitle("Exit Fullscreen");
+            } else {
+                fullscreenMenuItem.setIcon(R.drawable.ic_fullscreen);
+                fullscreenMenuItem.setTitle("Fullscreen");
+            }
+        }
+    }
+
+    private void updateFullscreenFabIcon() {
+        if (fabFullscreen != null) {
+            if (isFullscreen) {
+                fabFullscreen.setImageResource(R.drawable.ic_fullscreen_exit);
+            } else {
+                fabFullscreen.setImageResource(R.drawable.ic_fullscreen);
+            }
+        }
+    }
+
+    private void makeFabDraggable(View fab) {
+        final float[] dX = {0};
+        final float[] dY = {0};
+        final int[] lastAction = {0};
+
+        fab.setOnTouchListener((view, event) -> {
+            switch (event.getActionMasked()) {
+                case android.view.MotionEvent.ACTION_DOWN:
+                    dX[0] = view.getX() - event.getRawX();
+                    dY[0] = view.getY() - event.getRawY();
+                    lastAction[0] = android.view.MotionEvent.ACTION_DOWN;
+                    break;
+
+                case android.view.MotionEvent.ACTION_MOVE:
+                    if (terminalRecycler != null) {
+                        // Get the terminal recycler bounds
+                        int[] recyclerLocation = new int[2];
+                        terminalRecycler.getLocationOnScreen(recyclerLocation);
+                        int recyclerLeft = recyclerLocation[0];
+                        int recyclerTop = recyclerLocation[1];
+                        int recyclerRight = recyclerLeft + terminalRecycler.getWidth();
+                        int recyclerBottom = recyclerTop + terminalRecycler.getHeight();
+
+                        // Calculate new position
+                        float newX = event.getRawX() + dX[0];
+                        float newY = event.getRawY() + dY[0];
+
+                        // Get FAB dimensions
+                        int fabWidth = view.getWidth();
+                        int fabHeight = view.getHeight();
+
+                        // Get FAB location to calculate screen position
+                        int[] fabLocation = new int[2];
+                        view.getLocationOnScreen(fabLocation);
+                        
+                        // Calculate the screen position of the FAB if we apply newX/newY
+                        // newX and newY are relative to parent, so we need to convert
+                        int[] parentLocation = new int[2];
+                        ((View) view.getParent()).getLocationOnScreen(parentLocation);
+                        float fabScreenX = parentLocation[0] + newX;
+                        float fabScreenY = parentLocation[1] + newY;
+
+                        // Constrain to terminal recycler bounds
+                        if (fabScreenX < recyclerLeft) {
+                            newX = newX + (recyclerLeft - fabScreenX);
+                        }
+                        if (fabScreenX + fabWidth > recyclerRight) {
+                            newX = newX - ((fabScreenX + fabWidth) - recyclerRight);
+                        }
+                        if (fabScreenY < recyclerTop) {
+                            newY = newY + (recyclerTop - fabScreenY);
+                        }
+                        if (fabScreenY + fabHeight > recyclerBottom) {
+                            newY = newY - ((fabScreenY + fabHeight) - recyclerBottom);
+                        }
+
+                        view.setX(newX);
+                        view.setY(newY);
+                    } else {
+                        // Fallback if recycler not available
+                        view.setX(event.getRawX() + dX[0]);
+                        view.setY(event.getRawY() + dY[0]);
+                    }
+                    lastAction[0] = android.view.MotionEvent.ACTION_MOVE;
+                    break;
+
+                case android.view.MotionEvent.ACTION_UP:
+                    // If it was just a tap (not a drag), trigger the click
+                    if (lastAction[0] == android.view.MotionEvent.ACTION_DOWN) {
+                        view.performClick();
+                    }
+                    break;
+
+                default:
+                    return false;
+            }
+            return true;
+        });
+    }
 
     @Override
     public void onDestroyView() {
