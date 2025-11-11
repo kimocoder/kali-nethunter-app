@@ -98,6 +98,9 @@ public class TerminalFragment extends Fragment implements MenuProvider {
     private static final String KEY_FIRST_RUN_SETUP_SHOWN = "first_run_setup_shown";
     private static final String KEY_PREF_INITIAL_CMD_TEXT = "initial_cmd_text";
     private static final String KEY_PREF_INITIAL_CMD_ENABLED = "initial_cmd_enabled";
+    private static final String KEY_AUTO_PS1_ENABLED = "auto_ps1_enabled";
+    private static final String KEY_PS1_STYLE = "ps1_style";
+    private static final String KEY_PS1_CUSTOM = "ps1_custom";
     private static final String DEFAULT_HOSTNAME = "kali";
     private static final int PERSISTENT_BUFFER_SIZE = 100;
     private static final List<CharSequence> persistentLines = new ArrayList<>();
@@ -157,6 +160,56 @@ public class TerminalFragment extends Fragment implements MenuProvider {
             new ThemePreset("Matrix", Color.parseColor("#000000"), Color.parseColor("#00FF00")),
             new ThemePreset("Kali Linux", Color.parseColor("#000000"), Color.parseColor("#DC143C"))
     };
+
+    /**
+     * PS1 prompt format presets for different shell types.
+     * Provides clean, readable prompt formats with minimal ANSI escape sequences.
+     */
+    private static class PS1Preset {
+        final String name;
+        final String bashFormat;
+        final String zshFormat;
+        final String shFormat;
+
+        PS1Preset(String name, String bashFormat, String zshFormat, String shFormat) {
+            this.name = name;
+            this.bashFormat = bashFormat;
+            this.zshFormat = zshFormat;
+            this.shFormat = shFormat;
+        }
+
+        /**
+         * Minimal prompt: just the prompt symbol ($ or #)
+         */
+        static final PS1Preset MINIMAL = new PS1Preset(
+            "Minimal",
+            "PS1='\\$ '",
+            "PS1='%# '",
+            "PS1='$ '"
+        );
+
+        /**
+         * Standard prompt: user@host:dir$
+         * Uses green for user@host, blue for directory
+         */
+        static final PS1Preset STANDARD = new PS1Preset(
+            "Standard",
+            "PS1='\\[\\e[1;32m\\]\\u@\\h\\[\\e[0m\\]:\\[\\e[1;34m\\]\\w\\[\\e[0m\\]\\$ '",
+            "PS1='%F{green}%n@%m%f:%F{blue}%~%f%# '",
+            "PS1='\\u@\\h:\\w\\$ '"
+        );
+
+        /**
+         * Full prompt: user@host:dir [time]$
+         * Includes timestamp for command tracking
+         */
+        static final PS1Preset FULL = new PS1Preset(
+            "Full",
+            "PS1='\\[\\e[1;32m\\]\\u@\\h\\[\\e[0m\\]:\\[\\e[1;34m\\]\\w\\[\\e[0m\\] [\\t]\\$ '",
+            "PS1='%F{green}%n@%m%f:%F{blue}%~%f [%*]%# '",
+            "PS1='\\u@\\h:\\w [\\t]\\$ '"
+        );
+    }
 
     public static TerminalFragment newInstance(int itemId) {
         TerminalFragment fragment = new TerminalFragment();
@@ -438,10 +491,14 @@ public class TerminalFragment extends Fragment implements MenuProvider {
                 outputThread = new Thread(() -> readStream(stdout, false), "term-out");
                 errorThread = new Thread(() -> readStream(stderr, true), "term-err");
                 outputThread.start(); errorThread.start();
-                String init = getEntryCmd() + "\n" +
-                        "TERM=xterm-256color CLICOLOR_FORCE=1 FORCE_COLOR=1 COLORTERM=truecolor\n" +
-                        "cd " + NhPaths.CHROOT_HOME + "\n";
+                
+                // Send entry command to enter chroot
+                String init = getEntryCmd() + "\n";
                 writer.write(init); writer.flush();
+                
+                // Wait for shell to be ready before sending init commands
+                handler.postDelayed(this::initializeShellEnvironment, 500);
+                
                 handler.post(this::updateCtrlButtonState);
             } catch (IOException e) { Log.e(TAG, "Failed to start terminal", e); }
         }).start();
@@ -469,7 +526,13 @@ public class TerminalFragment extends Fragment implements MenuProvider {
                 ptyIn = new FileInputStream(ptyPfd.getFileDescriptor());
                 ptyOut = new FileOutputStream(ptyPfd.getFileDescriptor());
                 ptyReadThread = new Thread(() -> readStream(ptyIn, false), "pty-reader"); ptyReadThread.start();
-                if (!USE_CHROOT_DIRECT) writePty("(stty -echo 2>/dev/null) >/dev/null 2>&1\n"); else writePty("\n");
+                
+                // Send a newline to trigger prompt
+                writePty("\n");
+                
+                // Wait for shell to be ready before sending init commands
+                handler.postDelayed(this::initializeShellEnvironment, 500);
+                
                 handler.post(this::updateCtrlButtonState);
                 scheduleInitialWindowSizeUpdate();
             } catch (Exception e) {
@@ -772,6 +835,13 @@ public class TerminalFragment extends Fragment implements MenuProvider {
         if (!trimmed.isEmpty()) recordHistory(command);
         pendingCurrentLine = ""; inputEdit.setText(""); if (isClear) { clearTerminal(); }
         Log.d(TAG, "Sending command: " + command);
+        
+        // Echo the command locally to the terminal display
+        // This ensures the user sees what they typed, regardless of PTY echo settings
+        if (!command.isEmpty()) {
+            appendAnsi(command, false);
+        }
+        
         if (serviceBound && serviceSessionId > 0) {
             boundService.send(serviceSessionId, command + "\n");
             return;
@@ -903,6 +973,159 @@ public class TerminalFragment extends Fragment implements MenuProvider {
         return candidates;
     }
 
+    /**
+     * Build a clean PS1 prompt string based on shell type and user preferences.
+     * Returns the appropriate PS1 format for bash, zsh, or sh shells.
+     * 
+     * @param shellPath The resolved shell path (e.g., "/bin/bash", "/bin/zsh")
+     * @return PS1 format string appropriate for the shell type
+     */
+    private String buildCleanPS1(String shellPath) {
+        if (shellPath == null) shellPath = "/bin/bash";
+        
+        // Get user's PS1 style preference
+        SharedPreferences prefs = requireContext().getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        String style = prefs.getString(KEY_PS1_STYLE, "standard");
+        String customPs1 = prefs.getString(KEY_PS1_CUSTOM, "");
+        
+        // If custom PS1 is provided, use it directly
+        if ("custom".equalsIgnoreCase(style) && !customPs1.trim().isEmpty()) {
+            return customPs1.trim();
+        }
+        
+        // Select preset based on style preference
+        PS1Preset preset;
+        switch (style.toLowerCase()) {
+            case "minimal":
+                preset = PS1Preset.MINIMAL;
+                break;
+            case "full":
+                preset = PS1Preset.FULL;
+                break;
+            case "standard":
+            default:
+                preset = PS1Preset.STANDARD;
+                break;
+        }
+        
+        // Return appropriate format based on shell type
+        if (shellPath.endsWith("zsh")) {
+            return preset.zshFormat;
+        } else if (shellPath.endsWith("bash")) {
+            return preset.bashFormat;
+        } else {
+            // For sh and other shells, use simple format
+            return preset.shFormat;
+        }
+    }
+
+    /**
+     * Generate shell-specific PS1 export command.
+     * Creates the appropriate export statement to set the PS1 prompt.
+     * 
+     * @param shellPath The resolved shell path
+     * @return Shell command to export PS1 variable
+     */
+    private String getPS1InitCommand(String shellPath) {
+        String ps1Format = buildCleanPS1(shellPath);
+        
+        // For bash and sh, use export command
+        if (shellPath.endsWith("bash") || shellPath.endsWith("sh")) {
+            return "export " + ps1Format;
+        }
+        // For zsh, also use export (works in zsh)
+        else if (shellPath.endsWith("zsh")) {
+            return "export " + ps1Format;
+        }
+        
+        // Fallback: generic export
+        return "export " + ps1Format;
+    }
+
+    /**
+     * Initialize shell environment with proper settings.
+     * Sends initialization commands to set up TERM, COLORTERM, LANG, LC_ALL, and PS1.
+     * This method should be called after the shell/PTY is created and ready.
+     * <p>
+     * Requirements: 4.1, 4.2, 4.3, 4.4, 2.5
+     */
+    private void initializeShellEnvironment() {
+        // Check if auto-PS1 is enabled
+        SharedPreferences prefs = requireContext().getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        boolean autoPs1Enabled = prefs.getBoolean(KEY_AUTO_PS1_ENABLED, true);
+        
+        String shellPath = resolvePreferredShell();
+        StringBuilder init = new StringBuilder();
+        
+        // Disable terminal echo in PTY mode to prevent command duplication
+        // We handle echo locally in the app
+        if (USE_PTY) {
+            init.append("stty -echo 2>/dev/null\n");
+        }
+        
+        // Set terminal environment variables for proper ANSI support
+        init.append("export TERM=xterm-256color\n");
+        init.append("export COLORTERM=truecolor\n");
+        init.append("export CLICOLOR_FORCE=1\n");
+        init.append("export FORCE_COLOR=1\n");
+        
+        // Set locale variables for proper character encoding
+        init.append("export LANG=en_US.UTF-8\n");
+        init.append("export LC_ALL=C\n");
+        
+        // Set PS1 prompt if auto-PS1 is enabled
+        if (autoPs1Enabled) {
+            String ps1Cmd = getPS1InitCommand(shellPath);
+            init.append(ps1Cmd).append("\n");
+        }
+        
+        // Change to home directory (fallback to current if /root doesn't exist)
+        init.append("cd /root 2>/dev/null || cd ~ 2>/dev/null || true\n");
+        
+        // Clear screen for clean start
+        init.append("clear\n");
+        
+        // Send initialization commands
+        sendInitCommands(init.toString());
+    }
+
+    /**
+     * Send initialization commands to the shell.
+     * Handles both service-based and legacy shell modes.
+     * 
+     * @param commands The initialization command string to send
+     */
+    private void sendInitCommands(String commands) {
+        if (commands == null || commands.isEmpty()) {
+            return;
+        }
+        
+        // Use service-based session if available
+        if (serviceBound && serviceSessionId > 0 && boundService != null) {
+            boundService.send(serviceSessionId, commands);
+            Log.d(TAG, "Sent init commands via service");
+            return;
+        }
+        
+        // Fallback to legacy mode
+        new Thread(() -> {
+            try {
+                if (ptyOut != null) {
+                    writePty(commands);
+                    Log.d(TAG, "Sent init commands via PTY");
+                } else if (writer != null) {
+                    writer.write(commands);
+                    writer.flush();
+                    Log.d(TAG, "Sent init commands via process writer");
+                } else {
+                    Log.w(TAG, "Shell not ready for init commands");
+                }
+            } catch (IOException e) {
+                Log.e(TAG, "Failed to send init commands", e);
+            }
+        }).start();
+    }
+
     @Override public void onResume() { super.onResume(); setActionBarTitleToTerminal(); }
 
     private void setActionBarTitleToTerminal() {
@@ -948,27 +1171,163 @@ public class TerminalFragment extends Fragment implements MenuProvider {
                 int seqEnd = -1; for (int j = i + 2; j < len; j++) { char ch = text.charAt(j); if ((ch >= 'A' && ch <= 'Z') || (ch >= 'a' && ch <= 'z')) { seqEnd = j; break; } }
                 if (seqEnd == -1) { ansiCarry = text.substring(i); break; }
                 char finalByte = text.charAt(seqEnd); String inside = text.substring(i + 2, seqEnd); i = seqEnd + 1;
-                if (finalByte == 'm') { parseAndApplySgrSequence(inside); }
+                if (finalByte == 'm') { 
+                    parseAndApplySgrSequence(inside); 
+                } else {
+                    // Handle cursor control sequences (G, K, H, J, etc.)
+                    parseCursorControlSequence(inside, finalByte);
+                }
                 currentLineSegmentStart = currentLine.length();
             } else if (c == '\n' || c == '\r') {
-                char next = (i + 1 < len) ? text.charAt(i + 1) : 0; applyCurrentStyle(currentLine, currentLineSegmentStart);
-                if (isErr) {
-                    SpannableStringBuilder errPrefix = new SpannableStringBuilder("[err] ");
-                    errPrefix.setSpan(new ForegroundColorSpan(0xFFFF5555), 0, errPrefix.length(), Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
-                    errPrefix.append(currentLine);
-                    terminalAdapter.addLine(errPrefix, terminalRecycler);
-                    persistentLines.add(errPrefix);
+                char next = (i + 1 < len) ? text.charAt(i + 1) : 0; 
+                applyCurrentStyle(currentLine, currentLineSegmentStart);
+                
+                // Handle carriage return without newline (prompt overwrites)
+                if (c == '\r' && next != '\n') {
+                    // Carriage return alone - just skip it for now
+                    // Don't reset cursor or clear line - this preserves prompts
+                    // True dynamic updates should use cursor control sequences
+                    i++;
+                } else if (c == '\r' && next == '\n') {
+                    // CRLF - treat as newline
+                    // Check if this is a prompt line and reset formatting if so
+                    boolean isPrompt = isPromptLine(currentLine);
+                    
+                    if (isErr) {
+                        SpannableStringBuilder errPrefix = new SpannableStringBuilder("[err] ");
+                        errPrefix.setSpan(new ForegroundColorSpan(0xFFFF5555), 0, errPrefix.length(), Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+                        errPrefix.append(currentLine);
+                        terminalAdapter.addLine(errPrefix, terminalRecycler);
+                        persistentLines.add(errPrefix);
+                    } else {
+                        CharSequence line = new SpannableStringBuilder(currentLine);
+                        terminalAdapter.addLine(line, terminalRecycler);
+                        persistentLines.add(line);
+                    }
+                    if (persistentLines.size() > PERSISTENT_BUFFER_SIZE) persistentLines.remove(0);
+                    
+                    // Reset formatting state if this was a prompt line
+                    if (isPrompt) {
+                        resetAllSgr();
+                    }
+                    
+                    currentLine = new SpannableStringBuilder(); 
+                    currentLineSegmentStart = 0;
+                    cursorColumn = 0;
+                    i += 2;
+                } else if (c == '\n') {
+                    // LF alone - treat as newline
+                    // Check if this is a prompt line and reset formatting if so
+                    boolean isPrompt = isPromptLine(currentLine);
+                    
+                    if (isErr) {
+                        SpannableStringBuilder errPrefix = new SpannableStringBuilder("[err] ");
+                        errPrefix.setSpan(new ForegroundColorSpan(0xFFFF5555), 0, errPrefix.length(), Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+                        errPrefix.append(currentLine);
+                        terminalAdapter.addLine(errPrefix, terminalRecycler);
+                        persistentLines.add(errPrefix);
+                    } else {
+                        CharSequence line = new SpannableStringBuilder(currentLine);
+                        terminalAdapter.addLine(line, terminalRecycler);
+                        persistentLines.add(line);
+                    }
+                    if (persistentLines.size() > PERSISTENT_BUFFER_SIZE) persistentLines.remove(0);
+                    
+                    // Reset formatting state if this was a prompt line
+                    if (isPrompt) {
+                        resetAllSgr();
+                    }
+                    
+                    currentLine = new SpannableStringBuilder(); 
+                    currentLineSegmentStart = 0;
+                    cursorColumn = 0;
+                    i++;
+                } else {
+                    i++;
                 }
-                else {
-                    CharSequence line = new SpannableStringBuilder(currentLine);
-                    terminalAdapter.addLine(line, terminalRecycler);
-                    persistentLines.add(line);
-                }
-                if (persistentLines.size() > PERSISTENT_BUFFER_SIZE) persistentLines.remove(0);
-                currentLine = new SpannableStringBuilder(); currentLineSegmentStart = 0;
-                if (c == '\r' && next == '\n') { i += 2; } else { i++; }
-            } else { currentLine.append(c); i++; }
+            } else { 
+                // Append character to current line
+                currentLine.append(c);
+                cursorColumn++; 
+                i++; 
+            }
         }
+    }
+
+    /**
+     * Handle carriage return without newline.
+     * Resets cursor to start of line, allowing subsequent text to overwrite.
+     * This is used for dynamic prompts that update in place.
+     * <p>
+     * Requirements: 1.2, 3.2, 3.4
+     */
+    private void handleCarriageReturn() {
+        // Reset cursor to beginning of line
+        // Don't clear the line - let new text overwrite it
+        cursorColumn = 0;
+        currentLineSegmentStart = 0;
+    }
+
+    /**
+     * Detect if a line is a shell prompt.
+     * Uses heuristics to identify prompt lines (typically ending with $ or # followed by space).
+     * This helps reset formatting state to prevent previous output formatting from bleeding into prompts.
+     * <p>
+     * Requirements: 1.2, 3.5
+     * 
+     * @param line The line to check
+     * @return true if the line appears to be a prompt
+     */
+    private boolean isPromptLine(CharSequence line) {
+        if (line == null || line.length() == 0) {
+            return false;
+        }
+        
+        // Strip ANSI escape sequences to get plain text
+        String plainText = stripAnsiCodes(line.toString()).trim();
+        
+        if (plainText.isEmpty()) {
+            return false;
+        }
+        
+        // Common prompt patterns:
+        // - Ends with "$ " or "# " (bash/sh prompts)
+        // - Ends with "$" or "#" (minimal prompts)
+        // - Ends with "% " (zsh prompts)
+        // - Contains user@host pattern followed by $ or #
+        
+        // Check for trailing prompt symbols
+        if (plainText.endsWith("$ ") || plainText.endsWith("# ") || plainText.endsWith("% ")) {
+            return true;
+        }
+        
+        if (plainText.endsWith("$") || plainText.endsWith("#") || plainText.endsWith("%")) {
+            return true;
+        }
+        
+        // Check for user@host:path$ pattern
+        return plainText.matches(".*[@:].*[$#%]\\s*$");
+    }
+
+    /**
+     * Strip ANSI escape sequences from a string to get plain text.
+     * Used for prompt detection and text analysis.
+     * 
+     * @param text The text containing ANSI codes
+     * @return Plain text with ANSI codes removed
+     */
+    private String stripAnsiCodes(String text) {
+        if (text == null || text.isEmpty()) {
+            return "";
+        }
+        
+        // Remove CSI sequences: ESC [ ... letter
+        String result = text.replaceAll("\u001B\\[[0-9;]*[a-zA-Z]", "");
+        
+        // Remove other ESC sequences
+        result = result.replaceAll("\u001B[^\\[]*", "");
+        
+        return result;
     }
 
     private void applyCurrentStyle(SpannableStringBuilder sb, int start) {
@@ -1035,10 +1394,6 @@ public class TerminalFragment extends Fragment implements MenuProvider {
         return defaultFgColor;
     }
 
-    /**
-     * Parse and execute cursor control ANSI sequences.
-     * Handles CSI sequences with final bytes: G (cursor column), K (erase line), H (cursor home), J (clear screen)
-     */
     private void parseCursorControlSequence(String params, char finalByte) {
         try {
             switch (finalByte) {
@@ -1053,22 +1408,77 @@ public class TerminalFragment extends Fragment implements MenuProvider {
                     eraseInLine(mode);
                     break;
                     
-                case 'H': // CSI H or CSI n;m H - Cursor home (we only handle home position)
-                    // For simplicity, just reset cursor to column 0
+                case 'H': // CSI H or CSI n;m H - Cursor home
+                case 'f': // CSI n;m f - Cursor position (same as H)
+                    // For single-line terminal, just reset cursor to column 0
                     setCursorColumn(0);
                     break;
                     
                 case 'J': // CSI n J - Erase in display
                     int clearMode = params.isEmpty() ? 0 : parseIntSafe(params);
-                    if (clearMode == 2) {
+                    if (clearMode == 2 || clearMode == 3) {
                         // CSI 2J - Clear entire screen
+                        // CSI 3J - Clear entire screen and scrollback
                         handler.post(this::clearTerminal);
+                    } else if (clearMode == 0) {
+                        // CSI 0J - Clear from cursor to end of screen
+                        // For single-line terminal, clear current line from cursor
+                        eraseInLine(0);
+                    } else if (clearMode == 1) {
+                        // CSI 1J - Clear from cursor to beginning of screen
+                        // For single-line terminal, clear current line to cursor
+                        eraseInLine(1);
                     }
                     break;
                     
+                case 'A': // CSI n A - Cursor up n lines (ignore in single-line mode)
+                case 'B': // CSI n B - Cursor down n lines (ignore in single-line mode)
+                case 'E': // CSI n E - Cursor next line (ignore in single-line mode)
+                case 'F': // CSI n F - Cursor previous line (ignore in single-line mode)
+                    // These don't apply to our single-line buffer model, safely ignore
+                    break;
+                    
+                case 'C': // CSI n C - Cursor forward n columns
+                    int forward = params.isEmpty() ? 1 : parseIntSafe(params);
+                    if (forward < 1) forward = 1;
+                    setCursorColumn(cursorColumn + forward);
+                    break;
+                    
+                case 'D': // CSI n D - Cursor back n columns
+                    int back = params.isEmpty() ? 1 : parseIntSafe(params);
+                    if (back < 1) back = 1;
+                    setCursorColumn(cursorColumn - back);
+                    break;
+                    
+                case 's': // CSI s - Save cursor position (simplified: just note current position)
+                    // In a full terminal emulator, we'd save position; here we just acknowledge it
+                    break;
+                    
+                case 'u': // CSI u - Restore cursor position (simplified: reset to start)
+                    // In a full terminal emulator, we'd restore saved position; here we reset
+                    setCursorColumn(0);
+                    break;
+                    
+                case 'X': // CSI n X - Erase n characters from cursor position
+                    int count = params.isEmpty() ? 1 : parseIntSafe(params);
+                    if (count < 1) count = 1;
+                    eraseCharacters(count);
+                    break;
+                    
+                case 'P': // CSI n P - Delete n characters
+                    int delCount = params.isEmpty() ? 1 : parseIntSafe(params);
+                    if (delCount < 1) delCount = 1;
+                    deleteCharacters(delCount);
+                    break;
+                    
+                case 'L': // CSI n L - Insert n lines (not applicable in single-line mode)
+                case 'M': // CSI n M - Delete n lines (not applicable in single-line mode)
+                    // These don't apply to our single-line buffer model, safely ignore
+                    break;
+                    
                 default:
-                    // Ignore unknown cursor control sequences
-                    Log.d(TAG, "Unknown cursor control sequence: CSI " + params + finalByte);
+                    // Silently ignore unknown cursor control sequences to avoid log spam
+                    // Uncomment for debugging: Log.d(TAG, "Unknown cursor control: CSI " + params + finalByte);
                     break;
             }
         } catch (Exception e) {
@@ -1126,6 +1536,34 @@ public class TerminalFragment extends Fragment implements MenuProvider {
             }
         } catch (Exception e) {
             Log.d(TAG, "Error erasing line, mode=" + mode, e);
+        }
+    }
+
+    private void eraseCharacters(int count) {
+        int len = currentLine.length();
+        if (len == 0 || cursorColumn >= len) return;
+        
+        try {
+            int endPos = Math.min(cursorColumn + count, len);
+            if (endPos > cursorColumn) {
+                currentLine.delete(cursorColumn, endPos);
+            }
+        } catch (Exception e) {
+            Log.d(TAG, "Error erasing characters, count=" + count, e);
+        }
+    }
+
+    private void deleteCharacters(int count) {
+        int len = currentLine.length();
+        if (len == 0 || cursorColumn >= len) return;
+        
+        try {
+            int endPos = Math.min(cursorColumn + count, len);
+            if (endPos > cursorColumn) {
+                currentLine.delete(cursorColumn, endPos);
+            }
+        } catch (Exception e) {
+            Log.d(TAG, "Error deleting characters, count=" + count, e);
         }
     }
 
