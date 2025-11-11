@@ -447,17 +447,205 @@ public class TerminalFragment extends Fragment implements MenuProvider {
         ctrlButton.setAlpha(ctrlButton.isEnabled() ? (ctrlSticky ? 1.0f : 0.95f) : 0.5f);
     }
 
+    // Tab completion state
+    private volatile String completionOutput = "";
+    private volatile boolean waitingForCompletion = false;
+    private String lastCompletionInput = "";
+
     private void insertAtCursor() {
+        if (inputEdit == null) return;
+        
+        String currentText = inputEdit.getText() != null ? inputEdit.getText().toString() : "";
+        
+        // If empty or not ready, just insert tab
+        if (currentText.trim().isEmpty() || !isShellReady()) {
+            insertTabCharacter();
+            return;
+        }
+        
+        // Perform tab completion
+        performTabCompletion(currentText);
+    }
+
+    private void insertTabCharacter() {
         if (inputEdit == null) return;
         int start = inputEdit.getSelectionStart();
         int end = inputEdit.getSelectionEnd();
         Editable editable = inputEdit.getText();
         if (editable == null) return;
-        if (start < 0) start = editable.length(); if (end < 0) end = start;
+        if (start < 0) start = editable.length(); 
+        if (end < 0) end = start;
         editable.replace(Math.min(start, end), Math.max(start, end), "\t");
-        int newPos = Math.min(start, end) + 1; inputEdit.setSelection(newPos);
+        int newPos = Math.min(start, end) + 1; 
+        inputEdit.setSelection(newPos);
     }
 
+    private void performTabCompletion(String input) {
+        if (waitingForCompletion) return; // Prevent multiple concurrent completions
+        
+        // Parse input to get word to complete
+        String[] words = input.trim().split("\\s+");
+        if (words.length == 0) return;
+        
+        String wordToComplete = words[words.length - 1];
+        String prefix = input.substring(0, input.lastIndexOf(wordToComplete));
+        boolean isFirstWord = words.length == 1;
+        
+        // Build compgen command
+        String compgenCmd;
+        if (isFirstWord) {
+            // Complete command names
+            compgenCmd = String.format("compgen -c '%s' 2>/dev/null", wordToComplete.replace("'", "'\\''"));
+        } else {
+            // Complete file/directory names
+            compgenCmd = String.format("compgen -f '%s' 2>/dev/null", wordToComplete.replace("'", "'\\''"));
+        }
+        
+        // Add marker to identify completion output
+        String marker = "___COMPLETION_END___" + System.currentTimeMillis();
+        String fullCmd = compgenCmd + " && echo '" + marker + "'\n";
+        
+        // Set up completion state
+        waitingForCompletion = true;
+        completionOutput = "";
+        lastCompletionInput = input;
+        
+        // Create a temporary listener to capture completion output
+        final String finalPrefix = prefix;
+        final String finalWord = wordToComplete;
+        final String finalMarker = marker;
+        
+        new Thread(() -> {
+            try {
+                // Send completion command
+                if (serviceBound && serviceSessionId > 0) {
+                    boundService.send(serviceSessionId, fullCmd);
+                } else if (ptyOut != null) {
+                    writePty(fullCmd);
+                } else if (writer != null) {
+                    writer.write(fullCmd);
+                    writer.flush();
+                }
+                
+                // Wait for completion output (with timeout)
+                long startTime = System.currentTimeMillis();
+                while (waitingForCompletion && (System.currentTimeMillis() - startTime) < 2000) {
+                    if (completionOutput.contains(finalMarker)) {
+                        // Process completions
+                        String output = completionOutput.substring(0, completionOutput.indexOf(finalMarker));
+                        processCompletions(output, finalPrefix, finalWord);
+                        waitingForCompletion = false;
+                        break;
+                    }
+                    Thread.sleep(50);
+                }
+                
+                if (waitingForCompletion) {
+                    // Timeout
+                    waitingForCompletion = false;
+                    handler.post(() -> {
+                        if (isAdded()) {
+                            Toast.makeText(requireContext(), "Completion timeout", Toast.LENGTH_SHORT).show();
+                        }
+                    });
+                }
+            } catch (Exception e) {
+                Log.e(TAG, "Error performing tab completion", e);
+                waitingForCompletion = false;
+            }
+        }).start();
+    }
+
+    private void processCompletions(String output, String prefix, String wordToComplete) {
+        String[] completions = output.trim().split("\n");
+        
+        // Filter out empty lines and the command itself
+        List<String> validCompletions = new ArrayList<>();
+        for (String completion : completions) {
+            String trimmed = completion.trim();
+            if (!trimmed.isEmpty() && !trimmed.equals(wordToComplete) && !trimmed.startsWith("compgen")) {
+                validCompletions.add(trimmed);
+            }
+        }
+        
+        handler.post(() -> {
+            if (!isAdded() || inputEdit == null) return;
+            
+            if (validCompletions.isEmpty()) {
+                // No completions found
+                Toast.makeText(requireContext(), "No completions found", Toast.LENGTH_SHORT).show();
+            } else if (validCompletions.size() == 1) {
+                // Single completion - auto-complete
+                String completed = validCompletions.get(0);
+                inputEdit.setText(prefix + completed + " ");
+                inputEdit.setSelection(inputEdit.getText().length());
+            } else {
+                // Multiple completions - find common prefix and show options
+                String commonPrefix = findCommonPrefix(validCompletions);
+                
+                if (commonPrefix.length() > wordToComplete.length()) {
+                    // There's a common prefix longer than what user typed - complete to that
+                    inputEdit.setText(prefix + commonPrefix);
+                    inputEdit.setSelection(inputEdit.getText().length());
+                }
+                
+                // Show completion options in a dialog
+                showCompletionDialog(validCompletions, prefix);
+            }
+        });
+    }
+
+    private String findCommonPrefix(List<String> completions) {
+        if (completions.isEmpty()) return "";
+        if (completions.size() == 1) return completions.get(0);
+        
+        String first = completions.get(0);
+        int prefixLen = 0;
+        
+        for (int i = 0; i < first.length(); i++) {
+            char c = first.charAt(i);
+            boolean allMatch = true;
+            
+            for (String completion : completions) {
+                if (i >= completion.length() || completion.charAt(i) != c) {
+                    allMatch = false;
+                    break;
+                }
+            }
+            
+            if (allMatch) {
+                prefixLen = i + 1;
+            } else {
+                break;
+            }
+        }
+        
+        return first.substring(0, prefixLen);
+    }
+
+    private void showCompletionDialog(List<String> completions, String prefix) {
+        if (!isAdded()) return;
+        
+        AlertDialog.Builder builder = new AlertDialog.Builder(requireContext());
+        builder.setTitle("Tab Completions (" + completions.size() + " options)");
+        
+        String[] items = completions.toArray(new String[0]);
+        builder.setItems(items, (dialog, which) -> {
+            if (inputEdit != null) {
+                String selected = items[which];
+                inputEdit.setText(prefix + selected + " ");
+                inputEdit.setSelection(inputEdit.getText().length());
+                inputEdit.requestFocus();
+            }
+        });
+        
+        builder.setNegativeButton("Cancel", null);
+        builder.show();
+    }
+
+    private boolean isShellReady() {
+        return (serviceBound && serviceSessionId > 0) || (ptyOut != null) || (writer != null);
+    }
 
     private void navigateHistory(int direction) {
         if (commandHistory.isEmpty() || inputEdit == null) return;
@@ -1161,7 +1349,14 @@ public class TerminalFragment extends Fragment implements MenuProvider {
     }
 
     private void appendAnsi(String raw, boolean isErr) {
-        if (raw.isEmpty()) return; String text = ansiCarry + raw; ansiCarry = ""; int i = 0; int len = text.length();
+        if (raw.isEmpty()) return; 
+        
+        // Capture output for tab completion
+        if (waitingForCompletion) {
+            completionOutput += raw;
+        }
+        
+        String text = ansiCarry + raw; ansiCarry = ""; int i = 0; int len = text.length();
         while (i < len) {
             char c = text.charAt(i);
             if (c == '\u001B') {
