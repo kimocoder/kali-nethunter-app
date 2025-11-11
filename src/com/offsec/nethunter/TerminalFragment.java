@@ -1007,12 +1007,36 @@ public class TerminalFragment extends Fragment implements MenuProvider {
         List<CharSequence> lines = terminalAdapter.getLines(); StringBuilder sb = new StringBuilder();
         for (CharSequence line : lines) { sb.append(line).append("\n"); }
         try {
-            File nhFilesDir = new File(Environment.getExternalStorageDirectory(), "nh_files");
-            if (!nhFilesDir.exists()) { boolean created = nhFilesDir.mkdirs(); if (!created && !nhFilesDir.exists()) Log.w(TAG, "Failed to create directory: " + nhFilesDir.getAbsolutePath()); }
-            File outputFile = new File(nhFilesDir, "terminal_output.txt");
-            FileOutputStream fos = new FileOutputStream(outputFile); fos.write(sb.toString().getBytes(StandardCharsets.UTF_8)); fos.close();
+            // Use app-specific external storage (scoped storage compatible)
+            // This works on all Android versions and doesn't require storage permissions
+            File appFilesDir = requireContext().getExternalFilesDir(null);
+            if (appFilesDir == null) {
+                // Fallback to internal storage if external is unavailable
+                appFilesDir = requireContext().getFilesDir();
+            }
+            File nhFilesDir = new File(appFilesDir, "nh_files");
+            if (!nhFilesDir.exists()) { 
+                boolean created = nhFilesDir.mkdirs(); 
+                if (!created && !nhFilesDir.exists()) {
+                    Log.w(TAG, "Failed to create directory: " + nhFilesDir.getAbsolutePath());
+                    Toast.makeText(requireContext(), "Failed to create output directory", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+            }
+            
+            // Generate filename with timestamp to avoid overwriting
+            String timestamp = new java.text.SimpleDateFormat("yyyyMMdd_HHmmss", java.util.Locale.US).format(new java.util.Date());
+            File outputFile = new File(nhFilesDir, "terminal_output_" + timestamp + ".txt");
+            
+            FileOutputStream fos = new FileOutputStream(outputFile); 
+            fos.write(sb.toString().getBytes(StandardCharsets.UTF_8)); 
+            fos.close();
+            
             Toast.makeText(requireContext(), "Output saved to " + outputFile.getAbsolutePath(), Toast.LENGTH_LONG).show();
-        } catch (IOException e) { Toast.makeText(requireContext(), "Failed to save output: " + e.getMessage(), Toast.LENGTH_SHORT).show(); }
+        } catch (IOException e) { 
+            Log.e(TAG, "Failed to save output", e);
+            Toast.makeText(requireContext(), "Failed to save output: " + e.getMessage(), Toast.LENGTH_SHORT).show(); 
+        }
     }
 
     private void restartTerminal() { stopTerminal(); clearTerminal(); handler.postDelayed(this::startTerminal, 250); }
