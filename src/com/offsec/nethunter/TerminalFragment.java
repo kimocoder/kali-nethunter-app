@@ -1027,7 +1027,7 @@ public class TerminalFragment extends Fragment implements MenuProvider {
         // Echo the command locally to the terminal display
         // This ensures the user sees what they typed, regardless of PTY echo settings
         if (!command.isEmpty()) {
-            appendAnsi(command, false);
+            appendAnsi(command + "\n", false);
         }
         
         if (serviceBound && serviceSessionId > 0) {
