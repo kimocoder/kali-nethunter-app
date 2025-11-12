@@ -12,7 +12,6 @@ import android.graphics.Color;
 import android.graphics.Typeface;
 import android.os.Build;
 import android.os.Bundle;
-import android.os.Environment;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.ParcelFileDescriptor;
@@ -32,7 +31,6 @@ import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
-import android.view.MotionEvent;
 import android.view.ScaleGestureDetector;
 import android.view.View;
 import android.view.ViewGroup;
@@ -1259,6 +1257,36 @@ public class TerminalFragment extends Fragment implements MenuProvider {
         }
         completionThread = null;
         
+        // Remove listeners to prevent memory leaks
+        if (inputEdit != null) {
+            inputEdit.setOnKeyListener(null);
+            inputEdit.removeTextChangedListener(null);
+        }
+        
+        if (terminalRecycler != null) {
+            terminalRecycler.clearOnScrollListeners();
+        }
+        
+        if (terminalAdapter != null) {
+            terminalAdapter.setSelectionListener(null);
+        }
+        
+        // Clear click listeners from FABs
+        if (fabGoBottom != null) {
+            fabGoBottom.setOnClickListener(null);
+        }
+        if (fabCopySelected != null) {
+            fabCopySelected.setOnClickListener(null);
+        }
+        if (fabFullscreen != null) {
+            fabFullscreen.setOnClickListener(null);
+            fabFullscreen.setOnTouchListener(null);
+        }
+        
+        if (ctrlButton != null) {
+            ctrlButton.setOnClickListener(null);
+        }
+        
         // Detach from service but do NOT stop sessions
         if (serviceBound) {
             try { if (boundService != null && serviceSessionId > 0) boundService.detachListener(serviceSessionId, serviceListener); } catch (Throwable ignored) {}
@@ -1268,6 +1296,26 @@ public class TerminalFragment extends Fragment implements MenuProvider {
         
         // Keep fallback: stop only legacy local terminal resources
         new Thread(this::stopTerminal).start();
+        
+        // Clear command history to free memory
+        commandHistory.clear();
+        historyIndex = -1;
+        pendingCurrentLine = "";
+        
+        // Clear persistent lines buffer
+        persistentLines.clear();
+        
+        // Clear ANSI state
+        ansiCarry = "";
+        currentLine = new SpannableStringBuilder();
+        currentLineSegmentStart = 0;
+        cursorColumn = 0;
+        
+        // Reset formatting state
+        currentBold = false;
+        currentUnderline = false;
+        currentFgColor = defaultFgColor;
+        currentBgColor = defaultBgColor;
         
         // Clear references to views to prevent memory leaks
         inputEdit = null;
