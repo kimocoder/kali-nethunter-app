@@ -456,7 +456,8 @@ public class TerminalFragment extends Fragment implements MenuProvider {
         ctrlButton.setAlpha(ctrlButton.isEnabled() ? (ctrlSticky ? 1.0f : 0.95f) : 0.5f);
     }
 
-    // Tab completion state
+    // Tab completion state - synchronized access required
+    private final Object completionLock = new Object();
     private volatile String completionOutput = "";
     private volatile boolean waitingForCompletion = false;
     private String lastCompletionInput = "";
@@ -491,89 +492,115 @@ public class TerminalFragment extends Fragment implements MenuProvider {
     }
 
     private void performTabCompletion(String input) {
-        if (waitingForCompletion) return; // Prevent multiple concurrent completions
-        
-        // Parse input to get word to complete
-        String[] words = input.trim().split("\\s+");
-        if (words.length == 0) return;
-        
-        String wordToComplete = words[words.length - 1];
-        String prefix = input.substring(0, input.lastIndexOf(wordToComplete));
-        boolean isFirstWord = words.length == 1;
-        
-        // Build compgen command
-        String compgenCmd;
-        if (isFirstWord) {
-            // Complete command names
-            compgenCmd = String.format("compgen -c '%s' 2>/dev/null", wordToComplete.replace("'", "'\\''"));
-        } else {
-            // Complete file/directory names
-            compgenCmd = String.format("compgen -f '%s' 2>/dev/null", wordToComplete.replace("'", "'\\''"));
-        }
-        
-        // Add marker to identify completion output
-        String marker = "___COMPLETION_END___" + System.currentTimeMillis();
-        String fullCmd = compgenCmd + " && echo '" + marker + "'\n";
-        
-        // Set up completion state
-        waitingForCompletion = true;
-        completionOutput = "";
-        lastCompletionInput = input;
-        
-        // Create a temporary listener to capture completion output
-        final String finalPrefix = prefix;
-        final String finalWord = wordToComplete;
-        final String finalMarker = marker;
-        
-        // Cancel any existing completion thread
-        if (completionThread != null && completionThread.isAlive()) {
-            waitingForCompletion = false;
-            completionThread.interrupt();
-        }
-        
-        completionThread = new Thread(() -> {
-            try {
-                // Send completion command
-                if (serviceBound && serviceSessionId > 0) {
-                    boundService.send(serviceSessionId, fullCmd);
-                } else if (ptyOut != null) {
-                    writePty(fullCmd);
-                } else if (writer != null) {
-                    writer.write(fullCmd);
-                    writer.flush();
-                }
-                
-                // Wait for completion output (with timeout)
-                long startTime = System.currentTimeMillis();
-                while (waitingForCompletion && !Thread.currentThread().isInterrupted() && (System.currentTimeMillis() - startTime) < 2000) {
-                    if (completionOutput.contains(finalMarker)) {
-                        // Process completions
-                        String output = completionOutput.substring(0, completionOutput.indexOf(finalMarker));
-                        processCompletions(output, finalPrefix, finalWord);
-                        waitingForCompletion = false;
-                        break;
-                    }
-                    Thread.sleep(50);
-                }
-                
-                if (waitingForCompletion && !Thread.currentThread().isInterrupted()) {
-                    // Timeout
-                    waitingForCompletion = false;
-                    handler.post(() -> {
-                        if (isAdded()) {
-                            Toast.makeText(requireContext(), "Completion timeout", Toast.LENGTH_SHORT).show();
-                        }
-                    });
-                }
-            } catch (InterruptedException e) {
-                // Thread was interrupted, clean exit
-                waitingForCompletion = false;
-            } catch (Exception e) {
-                Log.e(TAG, "Error performing tab completion", e);
-                waitingForCompletion = false;
+        synchronized (completionLock) {
+            // Prevent multiple concurrent completions
+            if (waitingForCompletion) return;
+            
+            // Parse input to get word to complete
+            String[] words = input.trim().split("\\s+");
+            if (words.length == 0) return;
+            
+            String wordToComplete = words[words.length - 1];
+            String prefix = input.substring(0, input.lastIndexOf(wordToComplete));
+            boolean isFirstWord = words.length == 1;
+            
+            // Build compgen command
+            String compgenCmd;
+            if (isFirstWord) {
+                // Complete command names
+                compgenCmd = String.format("compgen -c '%s' 2>/dev/null", wordToComplete.replace("'", "'\\''"));
+            } else {
+                // Complete file/directory names
+                compgenCmd = String.format("compgen -f '%s' 2>/dev/null", wordToComplete.replace("'", "'\\''"));
             }
-        }, "tab-completion");
-        completionThread.start();
+
+            // Execute command and capture output without visible markers
+            String fullCmd = "{ " + compgenCmd + "; } 2>/dev/null\n";
+            
+            // Cancel any existing completion thread
+            if (completionThread != null && completionThread.isAlive()) {
+                waitingForCompletion = false;
+                completionThread.interrupt();
+                try {
+                    completionThread.join(100); // Wait briefly for thread to finish
+                } catch (InterruptedException ignored) {
+                    Thread.currentThread().interrupt();
+                }
+            }
+            
+            // Set up completion state
+            waitingForCompletion = true;
+            completionOutput = "";
+            lastCompletionInput = input;
+            
+            // Create a temporary listener to capture completion output
+            final String finalPrefix = prefix;
+            final String finalWord = wordToComplete;
+            final long startTime = System.currentTimeMillis();
+            
+            completionThread = new Thread(() -> {
+                try {
+                    // Clear any previous completion output
+                    synchronized (completionLock) {
+                        completionOutput = "";
+                    }
+                    
+                    // Send completion command
+                    if (serviceBound && serviceSessionId > 0) {
+                        boundService.send(serviceSessionId, fullCmd);
+                    } else if (ptyOut != null) {
+                        writePty(fullCmd);
+                    } else if (writer != null) {
+                        synchronized (writer) {
+                            writer.write(fullCmd);
+                            writer.flush();
+                        }
+                    }
+                    
+                    // Wait for completion output (with shorter timeout)
+                    while (waitingForCompletion && !Thread.currentThread().isInterrupted() && (System.currentTimeMillis() - startTime) < 1000) {
+                        String currentOutput;
+                        synchronized (completionLock) {
+                            currentOutput = completionOutput;
+                        }
+                        
+                        // Check if we have output and it looks complete (ends with newline or prompt)
+                        if (!currentOutput.trim().isEmpty() && 
+                            (currentOutput.endsWith("\n") || currentOutput.contains("$") || currentOutput.contains("#"))) {
+                            // Process completions
+                            processCompletions(currentOutput.trim(), finalPrefix, finalWord);
+                            synchronized (completionLock) {
+                                waitingForCompletion = false;
+                            }
+                            break;
+                        }
+                        Thread.sleep(50);
+                    }
+                    
+                    synchronized (completionLock) {
+                        if (waitingForCompletion && !Thread.currentThread().isInterrupted()) {
+                            // Timeout - try to process whatever output we have
+                            String currentOutput = completionOutput.trim();
+                            if (!currentOutput.isEmpty()) {
+                                processCompletions(currentOutput, finalPrefix, finalWord);
+                            }
+                            waitingForCompletion = false;
+                        }
+                    }
+                } catch (InterruptedException e) {
+                    // Thread was interrupted, clean exit
+                    synchronized (completionLock) {
+                        waitingForCompletion = false;
+                    }
+                } catch (Exception e) {
+                    Log.e(TAG, "Error performing tab completion", e);
+                    synchronized (completionLock) {
+                        waitingForCompletion = false;
+                    }
+                }
+            }, "tab-completion");
+            completionThread.start();
+        }
     }
 
     private void processCompletions(String output, String prefix, String wordToComplete) {
@@ -1245,17 +1272,22 @@ public class TerminalFragment extends Fragment implements MenuProvider {
         // Clean up all Handler callbacks to prevent memory leaks
         handler.removeCallbacksAndMessages(null);
         
-        // Cancel any pending tab completion
-        waitingForCompletion = false;
-        if (completionThread != null && completionThread.isAlive()) {
-            completionThread.interrupt();
+        // Cancel any pending tab completion (thread-safe)
+        synchronized (completionLock) {
+            waitingForCompletion = false;
+            if (completionThread != null && completionThread.isAlive()) {
+                completionThread.interrupt();
+            }
+        }
+        // Wait for thread to finish outside the lock to avoid deadlock
+        if (completionThread != null) {
             try {
                 completionThread.join(200);
             } catch (InterruptedException ignored) {
                 Thread.currentThread().interrupt();
             }
+            completionThread = null;
         }
-        completionThread = null;
         
         // Remove listeners to prevent memory leaks
         if (inputEdit != null) {
@@ -1696,9 +1728,11 @@ public class TerminalFragment extends Fragment implements MenuProvider {
     private void appendAnsi(String raw, boolean isErr) {
         if (raw.isEmpty()) return; 
         
-        // Capture output for tab completion
+        // Capture output for tab completion (thread-safe)
         if (waitingForCompletion) {
-            completionOutput += raw;
+            synchronized (completionLock) {
+                completionOutput += raw;
+            }
         }
         
         String text = ansiCarry + raw; ansiCarry = ""; int i = 0; int len = text.length();
