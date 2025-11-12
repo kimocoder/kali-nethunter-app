@@ -118,6 +118,12 @@ public class TerminalFragment extends Fragment implements MenuProvider {
         java.util.concurrent.Executors.newSingleThreadExecutor();
     private Thread outputThread;
     private Thread errorThread;
+    
+    // Debouncing for rapid text updates
+    private final List<CharSequence> pendingLinesToAdd = new ArrayList<>();
+    private final Object pendingLinesLock = new Object();
+    private Runnable pendingFlushRunnable = null;
+    private static final long UI_UPDATE_DEBOUNCE_MS = 50; // 50ms debounce
     private final List<String> commandHistory = new ArrayList<>();
     private int historyIndex = -1;
     private String pendingCurrentLine = "";
@@ -1332,6 +1338,19 @@ public class TerminalFragment extends Fragment implements MenuProvider {
         // Keep fallback: stop only legacy local terminal resources
         new Thread(this::stopTerminal).start();
         
+        // Flush any pending UI updates immediately
+        synchronized (pendingLinesLock) {
+            if (pendingFlushRunnable != null) {
+                handler.removeCallbacks(pendingFlushRunnable);
+                // Flush immediately
+                if (!pendingLinesToAdd.isEmpty() && terminalAdapter != null && terminalRecycler != null) {
+                    terminalAdapter.addLines(new ArrayList<>(pendingLinesToAdd), terminalRecycler);
+                    pendingLinesToAdd.clear();
+                }
+                pendingFlushRunnable = null;
+            }
+        }
+        
         // Shutdown ANSI parser executor
         ansiParserExecutor.shutdown();
         try {
@@ -1350,6 +1369,11 @@ public class TerminalFragment extends Fragment implements MenuProvider {
         
         // Clear persistent lines buffer
         persistentLines.clear();
+        
+        // Clear pending UI updates
+        synchronized (pendingLinesLock) {
+            pendingLinesToAdd.clear();
+        }
         
         // Clear ANSI state
         ansiCarry = "";
@@ -1743,6 +1767,15 @@ public class TerminalFragment extends Fragment implements MenuProvider {
         if (ptyOut != null) { byte[] b = data.getBytes(StandardCharsets.UTF_8); ptyOut.write(b); ptyOut.flush(); }
     }
 
+    private void flushPendingUIUpdates() {
+        synchronized (pendingLinesLock) {
+            if (pendingFlushRunnable != null) {
+                handler.removeCallbacks(pendingFlushRunnable);
+                pendingFlushRunnable.run();
+            }
+        }
+    }
+    
     private synchronized void appendAnsi(String raw, boolean isErr) {
         if (raw.isEmpty()) return; 
         
@@ -1847,15 +1880,34 @@ public class TerminalFragment extends Fragment implements MenuProvider {
             }
         }
         
-        // Submit all lines in one batch for better RecyclerView performance
-        // Post to main thread since RecyclerView updates must happen on main thread
+        // Submit all lines with debouncing for better performance during rapid updates
         if (!batchedLines.isEmpty()) {
-            final List<CharSequence> linesToAdd = new ArrayList<>(batchedLines);
-            handler.post(() -> {
-                if (terminalAdapter != null && terminalRecycler != null) {
-                    terminalAdapter.addLines(linesToAdd, terminalRecycler);
+            synchronized (pendingLinesLock) {
+                pendingLinesToAdd.addAll(batchedLines);
+                
+                // Cancel any pending flush
+                if (pendingFlushRunnable != null) {
+                    handler.removeCallbacks(pendingFlushRunnable);
                 }
-            });
+                
+                // Schedule a new flush after debounce delay
+                pendingFlushRunnable = () -> {
+                    List<CharSequence> linesToFlush;
+                    synchronized (pendingLinesLock) {
+                        if (pendingLinesToAdd.isEmpty()) return;
+                        linesToFlush = new ArrayList<>(pendingLinesToAdd);
+                        pendingLinesToAdd.clear();
+                        pendingFlushRunnable = null;
+                    }
+                    
+                    // Post to main thread since RecyclerView updates must happen on main thread
+                    if (terminalAdapter != null && terminalRecycler != null) {
+                        terminalAdapter.addLines(linesToFlush, terminalRecycler);
+                    }
+                };
+                
+                handler.postDelayed(pendingFlushRunnable, UI_UPDATE_DEBOUNCE_MS);
+            }
         }
     }
 
