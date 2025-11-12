@@ -104,7 +104,7 @@ public class TerminalFragment extends Fragment implements MenuProvider {
     private static final String KEY_PS1_CUSTOM = "ps1_custom";
     private static final String DEFAULT_HOSTNAME = "kali";
     private static final int PERSISTENT_BUFFER_SIZE = 100;
-    private static final List<CharSequence> persistentLines = new ArrayList<>();
+    private final List<CharSequence> persistentLines = new ArrayList<>();
     private TextInputEditText inputEdit;
     private RecyclerView terminalRecycler;
     private TerminalAdapter terminalAdapter;
@@ -114,7 +114,7 @@ public class TerminalFragment extends Fragment implements MenuProvider {
     private com.google.android.material.floatingactionbutton.FloatingActionButton fabFullscreen;
     private Process process;
     private volatile OutputStream outputStream;
-    private static volatile BufferedWriter writer;
+    private volatile BufferedWriter writer;
     private final Handler handler = new Handler(Looper.getMainLooper());
     private Thread outputThread;
     private Thread errorThread;
@@ -132,7 +132,7 @@ public class TerminalFragment extends Fragment implements MenuProvider {
     private volatile int ptyPid = -1;
     private volatile ParcelFileDescriptor ptyPfd;
     private volatile FileInputStream ptyIn;
-    private static volatile FileOutputStream ptyOut;
+    private volatile FileOutputStream ptyOut;
     private Thread ptyReadThread;
     private SpannableStringBuilder currentLine = new SpannableStringBuilder();
     private int currentLineSegmentStart = 0;
@@ -462,6 +462,7 @@ public class TerminalFragment extends Fragment implements MenuProvider {
     private volatile String completionOutput = "";
     private volatile boolean waitingForCompletion = false;
     private String lastCompletionInput = "";
+    private Thread completionThread;
 
     private void insertAtCursor() {
         if (inputEdit == null) return;
@@ -526,7 +527,13 @@ public class TerminalFragment extends Fragment implements MenuProvider {
         final String finalWord = wordToComplete;
         final String finalMarker = marker;
         
-        new Thread(() -> {
+        // Cancel any existing completion thread
+        if (completionThread != null && completionThread.isAlive()) {
+            waitingForCompletion = false;
+            completionThread.interrupt();
+        }
+        
+        completionThread = new Thread(() -> {
             try {
                 // Send completion command
                 if (serviceBound && serviceSessionId > 0) {
@@ -540,7 +547,7 @@ public class TerminalFragment extends Fragment implements MenuProvider {
                 
                 // Wait for completion output (with timeout)
                 long startTime = System.currentTimeMillis();
-                while (waitingForCompletion && (System.currentTimeMillis() - startTime) < 2000) {
+                while (waitingForCompletion && !Thread.currentThread().isInterrupted() && (System.currentTimeMillis() - startTime) < 2000) {
                     if (completionOutput.contains(finalMarker)) {
                         // Process completions
                         String output = completionOutput.substring(0, completionOutput.indexOf(finalMarker));
@@ -551,7 +558,7 @@ public class TerminalFragment extends Fragment implements MenuProvider {
                     Thread.sleep(50);
                 }
                 
-                if (waitingForCompletion) {
+                if (waitingForCompletion && !Thread.currentThread().isInterrupted()) {
                     // Timeout
                     waitingForCompletion = false;
                     handler.post(() -> {
@@ -560,11 +567,15 @@ public class TerminalFragment extends Fragment implements MenuProvider {
                         }
                     });
                 }
+            } catch (InterruptedException e) {
+                // Thread was interrupted, clean exit
+                waitingForCompletion = false;
             } catch (Exception e) {
                 Log.e(TAG, "Error performing tab completion", e);
                 waitingForCompletion = false;
             }
-        }).start();
+        }, "tab-completion");
+        completionThread.start();
     }
 
     private void processCompletions(String output, String prefix, String wordToComplete) {
@@ -1230,15 +1241,44 @@ public class TerminalFragment extends Fragment implements MenuProvider {
 
     @Override
     public void onDestroyView() {
-        super.onDestroyView(); requireActivity().removeMenuProvider(this);
+        super.onDestroyView(); 
+        requireActivity().removeMenuProvider(this);
+        
+        // Clean up all Handler callbacks to prevent memory leaks
+        handler.removeCallbacksAndMessages(null);
+        
+        // Cancel any pending tab completion
+        waitingForCompletion = false;
+        if (completionThread != null && completionThread.isAlive()) {
+            completionThread.interrupt();
+            try {
+                completionThread.join(200);
+            } catch (InterruptedException ignored) {
+                Thread.currentThread().interrupt();
+            }
+        }
+        completionThread = null;
+        
         // Detach from service but do NOT stop sessions
         if (serviceBound) {
             try { if (boundService != null && serviceSessionId > 0) boundService.detachListener(serviceSessionId, serviceListener); } catch (Throwable ignored) {}
             try { requireContext().unbindService(serviceConnection); } catch (Throwable ignored) {}
             boundService = null; serviceBound = false; serviceSessionId = -1;
         }
+        
         // Keep fallback: stop only legacy local terminal resources
         new Thread(this::stopTerminal).start();
+        
+        // Clear references to views to prevent memory leaks
+        inputEdit = null;
+        terminalRecycler = null;
+        terminalAdapter = null;
+        ctrlButton = null;
+        fabGoBottom = null;
+        fabCopySelected = null;
+        fabFullscreen = null;
+        fullscreenMenuItem = null;
+        scaleDetector = null;
     }
 
     private volatile boolean shuttingDown = false;
@@ -1250,21 +1290,94 @@ public class TerminalFragment extends Fragment implements MenuProvider {
     }
 
     private void stopProcessShell() {
-        try { if (writer != null) { try { writer.write("exit\n"); writer.flush(); } catch (IOException e) { Log.e(TAG, "Error while writing exit command", e); } } }
-        finally {
-            if (process != null) { process.destroy(); try { process.waitFor(); } catch (InterruptedException ignored) { Thread.currentThread().interrupt(); } }
-            writer = null; outputStream = null; outputThread = null; errorThread = null;
+        try { 
+            if (writer != null) { 
+                try { 
+                    writer.write("exit\n"); 
+                    writer.flush(); 
+                } catch (IOException e) { 
+                    Log.e(TAG, "Error while writing exit command", e); 
+                } 
+            } 
+        } finally {
+            // Interrupt and wait for threads to finish
+            if (outputThread != null && outputThread.isAlive()) {
+                outputThread.interrupt();
+                try { outputThread.join(500); } catch (InterruptedException ignored) { Thread.currentThread().interrupt(); }
+            }
+            if (errorThread != null && errorThread.isAlive()) {
+                errorThread.interrupt();
+                try { errorThread.join(500); } catch (InterruptedException ignored) { Thread.currentThread().interrupt(); }
+            }
+            
+            // Close streams
+            try { if (writer != null) writer.close(); } catch (IOException ignored) {}
+            try { if (outputStream != null) outputStream.close(); } catch (IOException ignored) {}
+            
+            // Destroy process
+            if (process != null) { 
+                process.destroy(); 
+                try { 
+                    process.waitFor(); 
+                } catch (InterruptedException ignored) { 
+                    Thread.currentThread().interrupt(); 
+                } 
+            }
+            
+            // Clear references
+            writer = null; 
+            outputStream = null; 
+            outputThread = null; 
+            errorThread = null;
+            process = null;
         }
     }
 
     private void stopPty() {
-        try { if (ptyOut != null) { try { writePty("exit\n"); } catch (IOException ignored) {} } }
-        finally {
-            if (ptyOut != null) { try { ptyOut.close(); } catch (IOException ignored) {} }
-            if (ptyPfd != null) { try { ptyPfd.close(); } catch (IOException ignored) {} }
-            if (ptyReadThread != null) { try { ptyReadThread.join(200); } catch (InterruptedException ignored) { Thread.currentThread().interrupt(); } if (ptyReadThread.isAlive()) ptyReadThread.interrupt(); }
-            if (ptyPid > 0) { PtyNative.killChild(ptyPid, 9); }
-            ptyFd = -1; ptyPid = -1; ptyIn = null; ptyOut = null; ptyReadThread = null;
+        try { 
+            if (ptyOut != null) { 
+                try { 
+                    writePty("exit\n"); 
+                } catch (IOException ignored) {} 
+            } 
+        } finally {
+            // Interrupt thread first, then wait
+            if (ptyReadThread != null && ptyReadThread.isAlive()) {
+                ptyReadThread.interrupt();
+                try { 
+                    ptyReadThread.join(500); 
+                } catch (InterruptedException ignored) { 
+                    Thread.currentThread().interrupt(); 
+                }
+                // Force interrupt if still alive
+                if (ptyReadThread.isAlive()) {
+                    Log.w(TAG, "PTY read thread did not terminate gracefully");
+                }
+            }
+            
+            // Close streams
+            if (ptyIn != null) { 
+                try { ptyIn.close(); } catch (IOException ignored) {} 
+            }
+            if (ptyOut != null) { 
+                try { ptyOut.close(); } catch (IOException ignored) {} 
+            }
+            if (ptyPfd != null) { 
+                try { ptyPfd.close(); } catch (IOException ignored) {} 
+            }
+            
+            // Kill child process
+            if (ptyPid > 0) { 
+                PtyNative.killChild(ptyPid, 9); 
+            }
+            
+            // Clear references
+            ptyFd = -1; 
+            ptyPid = -1; 
+            ptyIn = null; 
+            ptyOut = null; 
+            ptyReadThread = null;
+            ptyPfd = null;
         }
     }
 
@@ -1528,7 +1641,7 @@ public class TerminalFragment extends Fragment implements MenuProvider {
         catch (IOException e) { if (!shuttingDown) Log.e(TAG, "Error reading stream", e); }
     }
 
-    private static synchronized void writePty(String data) throws IOException {
+    private synchronized void writePty(String data) throws IOException {
         if (ptyOut != null) { byte[] b = data.getBytes(StandardCharsets.UTF_8); ptyOut.write(b); ptyOut.flush(); }
     }
 
@@ -1633,30 +1746,6 @@ public class TerminalFragment extends Fragment implements MenuProvider {
         }
     }
 
-    /**
-     * Handle carriage return without newline.
-     * Resets cursor to start of line, allowing subsequent text to overwrite.
-     * This is used for dynamic prompts that update in place.
-     * <p>
-     * Requirements: 1.2, 3.2, 3.4
-     */
-    private void handleCarriageReturn() {
-        // Reset cursor to beginning of line
-        // Don't clear the line - let new text overwrite it
-        cursorColumn = 0;
-        currentLineSegmentStart = 0;
-    }
-
-    /**
-     * Detect if a line is a shell prompt.
-     * Uses heuristics to identify prompt lines (typically ending with $ or # followed by space).
-     * This helps reset formatting state to prevent previous output formatting from bleeding into prompts.
-     * <p>
-     * Requirements: 1.2, 3.5
-     * 
-     * @param line The line to check
-     * @return true if the line appears to be a prompt
-     */
     private boolean isPromptLine(CharSequence line) {
         if (line == null || line.length() == 0) {
             return false;
@@ -1688,13 +1777,6 @@ public class TerminalFragment extends Fragment implements MenuProvider {
         return plainText.matches(".*[@:].*[$#%]\\s*$");
     }
 
-    /**
-     * Strip ANSI escape sequences from a string to get plain text.
-     * Used for prompt detection and text analysis.
-     * 
-     * @param text The text containing ANSI codes
-     * @return Plain text with ANSI codes removed
-     */
     private String stripAnsiCodes(String text) {
         if (text == null || text.isEmpty()) {
             return "";
@@ -1865,20 +1947,10 @@ public class TerminalFragment extends Fragment implements MenuProvider {
         }
     }
 
-    /**
-     * Set cursor column position with bounds checking.
-     * Clamps position to valid range [0, currentLine.length()]
-     */
     private void setCursorColumn(int col) {
         cursorColumn = Math.max(0, Math.min(col, currentLine.length()));
     }
 
-    /**
-     * Erase content in the current line based on mode.
-     * Mode 0: erase from cursor to end of line
-     * Mode 1: erase from start of line to cursor
-     * Mode 2: erase entire line
-     */
     private void eraseInLine(int mode) {
         int len = currentLine.length();
         if (len == 0) return;
