@@ -114,6 +114,8 @@ public class TerminalFragment extends Fragment implements MenuProvider {
     private volatile OutputStream outputStream;
     private volatile BufferedWriter writer;
     private final Handler handler = new Handler(Looper.getMainLooper());
+    private final java.util.concurrent.ExecutorService ansiParserExecutor = 
+        java.util.concurrent.Executors.newSingleThreadExecutor();
     private Thread outputThread;
     private Thread errorThread;
     private final List<String> commandHistory = new ArrayList<>();
@@ -1104,7 +1106,8 @@ public class TerminalFragment extends Fragment implements MenuProvider {
         // Echo the command locally to the terminal display
         // This ensures the user sees what they typed, regardless of PTY echo settings
         if (!command.isEmpty()) {
-            appendAnsi(command + "\n", false);
+            final String cmdToEcho = command + "\n";
+            ansiParserExecutor.execute(() -> appendAnsi(cmdToEcho, false));
         }
         
         if (serviceBound && serviceSessionId > 0) {
@@ -1328,6 +1331,17 @@ public class TerminalFragment extends Fragment implements MenuProvider {
         
         // Keep fallback: stop only legacy local terminal resources
         new Thread(this::stopTerminal).start();
+        
+        // Shutdown ANSI parser executor
+        ansiParserExecutor.shutdown();
+        try {
+            if (!ansiParserExecutor.awaitTermination(1, java.util.concurrent.TimeUnit.SECONDS)) {
+                ansiParserExecutor.shutdownNow();
+            }
+        } catch (InterruptedException e) {
+            ansiParserExecutor.shutdownNow();
+            Thread.currentThread().interrupt();
+        }
         
         // Clear command history to free memory
         commandHistory.clear();
@@ -1715,7 +1729,11 @@ public class TerminalFragment extends Fragment implements MenuProvider {
             byte[] buf = new byte[4096]; int n;
             while ((n = is.read(buf)) != -1) {
                 final String chunk = new String(buf, 0, n, StandardCharsets.UTF_8);
-                handler.post(() -> { if (!isAdded()) return; appendAnsi(chunk, isErr); });
+                // Parse ANSI on background thread, then post results to main thread
+                ansiParserExecutor.execute(() -> {
+                    if (!isAdded()) return;
+                    appendAnsi(chunk, isErr);
+                });
             }
         } catch (InterruptedIOException e) { if (!shuttingDown) Log.w(TAG, "Stream read interrupted", e); }
         catch (IOException e) { if (!shuttingDown) Log.e(TAG, "Error reading stream", e); }
@@ -1725,7 +1743,7 @@ public class TerminalFragment extends Fragment implements MenuProvider {
         if (ptyOut != null) { byte[] b = data.getBytes(StandardCharsets.UTF_8); ptyOut.write(b); ptyOut.flush(); }
     }
 
-    private void appendAnsi(String raw, boolean isErr) {
+    private synchronized void appendAnsi(String raw, boolean isErr) {
         if (raw.isEmpty()) return; 
         
         // Capture output for tab completion (thread-safe)
@@ -1830,8 +1848,14 @@ public class TerminalFragment extends Fragment implements MenuProvider {
         }
         
         // Submit all lines in one batch for better RecyclerView performance
+        // Post to main thread since RecyclerView updates must happen on main thread
         if (!batchedLines.isEmpty()) {
-            terminalAdapter.addLines(batchedLines, terminalRecycler);
+            final List<CharSequence> linesToAdd = new ArrayList<>(batchedLines);
+            handler.post(() -> {
+                if (terminalAdapter != null && terminalRecycler != null) {
+                    terminalAdapter.addLines(linesToAdd, terminalRecycler);
+                }
+            });
         }
     }
 
@@ -2258,7 +2282,11 @@ public class TerminalFragment extends Fragment implements MenuProvider {
 
     private final TerminalService.TerminalListener serviceListener = new TerminalService.TerminalListener() {
         @Override public void onOutput(int sessionId, @NonNull TerminalService.TerminalEvent event) {
-            handler.post(() -> { if (!isAdded()) return; appendAnsi(event.data, event.isErr); });
+            // Parse ANSI on background thread
+            ansiParserExecutor.execute(() -> {
+                if (!isAdded()) return;
+                appendAnsi(event.data, event.isErr);
+            });
         }
         @Override public void onSessionClosed(int sessionId, int exitCode) { /* optionally notify */ }
     };
@@ -2275,7 +2303,12 @@ public class TerminalFragment extends Fragment implements MenuProvider {
             // Replay buffered output to reconstruct UI
             List<TerminalService.TerminalEvent> snapshot = boundService.getBufferSnapshot(serviceSessionId);
             if (snapshot != null && !snapshot.isEmpty()) {
-                for (TerminalService.TerminalEvent ev : snapshot) { appendAnsi(ev.data, ev.isErr); }
+                // Process snapshot on background thread
+                ansiParserExecutor.execute(() -> {
+                    for (TerminalService.TerminalEvent ev : snapshot) {
+                        appendAnsi(ev.data, ev.isErr);
+                    }
+                });
             }
             updateCtrlButtonState();
             terminalRecycler.post(TerminalFragment.this::updatePtyWindowSize);
