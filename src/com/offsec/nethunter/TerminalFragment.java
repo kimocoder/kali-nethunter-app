@@ -1734,6 +1734,8 @@ public class TerminalFragment extends Fragment implements MenuProvider {
                 completionOutput += raw;
             }
         }
+
+        List<CharSequence> batchedLines = new ArrayList<>();
         
         String text = ansiCarry + raw; ansiCarry = ""; int i = 0; int len = text.length();
         while (i < len) {
@@ -1771,11 +1773,11 @@ public class TerminalFragment extends Fragment implements MenuProvider {
                         SpannableStringBuilder errPrefix = new SpannableStringBuilder("[err] ");
                         errPrefix.setSpan(new ForegroundColorSpan(0xFFFF5555), 0, errPrefix.length(), Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
                         errPrefix.append(currentLine);
-                        terminalAdapter.addLine(errPrefix, terminalRecycler);
+                        batchedLines.add(errPrefix);
                         persistentLines.add(errPrefix);
                     } else {
                         CharSequence line = new SpannableStringBuilder(currentLine);
-                        terminalAdapter.addLine(line, terminalRecycler);
+                        batchedLines.add(line);
                         persistentLines.add(line);
                     }
                     if (persistentLines.size() > PERSISTENT_BUFFER_SIZE) persistentLines.remove(0);
@@ -1798,11 +1800,11 @@ public class TerminalFragment extends Fragment implements MenuProvider {
                         SpannableStringBuilder errPrefix = new SpannableStringBuilder("[err] ");
                         errPrefix.setSpan(new ForegroundColorSpan(0xFFFF5555), 0, errPrefix.length(), Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
                         errPrefix.append(currentLine);
-                        terminalAdapter.addLine(errPrefix, terminalRecycler);
+                        batchedLines.add(errPrefix);
                         persistentLines.add(errPrefix);
                     } else {
                         CharSequence line = new SpannableStringBuilder(currentLine);
-                        terminalAdapter.addLine(line, terminalRecycler);
+                        batchedLines.add(line);
                         persistentLines.add(line);
                     }
                     if (persistentLines.size() > PERSISTENT_BUFFER_SIZE) persistentLines.remove(0);
@@ -1825,6 +1827,11 @@ public class TerminalFragment extends Fragment implements MenuProvider {
                 cursorColumn++; 
                 i++; 
             }
+        }
+        
+        // Submit all lines in one batch for better RecyclerView performance
+        if (!batchedLines.isEmpty()) {
+            terminalAdapter.addLines(batchedLines, terminalRecycler);
         }
     }
 
