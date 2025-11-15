@@ -1,7 +1,6 @@
 package com.offsec.nethunter;
 
 import android.Manifest;
-import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
@@ -315,11 +314,11 @@ public class BTFragment extends Fragment {
                 "git clone https://github.com/yesimxev/carwhisperer-0.2 /root/carwhisperer;" +
                 " cd /root/carwhisperer; make && make install; git clone https://github.com/yesimxev/bt_audit /root/bt_audit; cd /root/bt_audit/src; make;" +
                 " cp rfcomm_scan /usr/bin/; fi;" +
-                "if [ -f /usr/lib/libglibutil.so ]; then echo 'Libglibutil is installed!'; else git clone https://github.com/yesimxev/libglibutil /root/libglibutil;" +
+                "if [ -f /usr/lib/libglibutil.so ]; then echo 'libglibutil is installed!'; else git clone https://github.com/kimocoder/libglibutil /root/libglibutil;" +
                 " cd /root/libglibutil; make && make install-dev; fi;" +
-                "if [ -f /usr/lib/libgbinder.so ]; then echo 'Libgbinder is installed!'; else git clone https://github.com/yesimxev/libgbinder /root/libgbinder;" +
+                "if [ -f /usr/lib/libgbinder.so ]; then echo 'libgbinder is installed!'; else git clone https://github.com/kimocoder/libgbinder /root/libgbinder;" +
                 " cd /root/libgbinder; make && make install-dev; fi;" +
-                "if [ -f /usr/sbin/bluebinder ]; then echo 'Bluebinder is installed!'; else git clone https://github.com/yesimxev/bluebinder /root/bluebinder;" +
+                "if [ -f /usr/sbin/bluebinder ]; then echo 'bluebinder is installed!'; else git clone https://github.com/kimocoder/bluebinder /root/bluebinder;" +
                 " cd /root/bluebinder; make && make install; fi;" +
                 "if [ -f /root/badbt/btk_server.py ]; then echo 'BadBT is installed!'; else git clone https://github.com/yesimxev/badbt /root/badbt && cp /root/badbt/org.thanhle.btkbservice.conf /etc/dbus-1/system.d/; fi;" +
                 "if [ -f /etc/init.d/bluetooth ] && grep -q 'noplugin=input' /etc/init.d/bluetooth 2>/dev/null; then echo 'Bluetooth service is patched!'; else echo 'Patching Bluetooth service..' && " +
