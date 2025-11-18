@@ -1,9 +1,9 @@
 package com.offsec.nethunter.utils;
 
+import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.os.Build;
-import android.os.Environment;
 import android.view.Gravity;
 import android.widget.Toast;
 
@@ -15,6 +15,7 @@ public class NhPaths implements SharedPreferences.OnSharedPreferenceChangeListen
     private static final String TAG = "NhPaths";
     private static NhPaths instance;
     private final SharedPreferences sharedPreferences;
+    private static Context appContext;
     public static String APP;
     public static String APP_PATH;
     public static String APP_DATABASE_PATH;
@@ -38,18 +39,23 @@ public class NhPaths implements SharedPreferences.OnSharedPreferenceChangeListen
     public static String BUSYBOX;
     public static String MAGISK_DB_PATH;
     public static int GPS_PORT;
+    // Public accessor for the nh_files directory; resolved at runtime after APP_PATH is initialized.
+    public static String getNhFilesPath() {
+        return APP_NHFILES_PATH;
+    }
 
     private NhPaths(Context context) {
-        sharedPreferences = context.getApplicationContext().getSharedPreferences(BuildConfig.APPLICATION_ID, Context.MODE_PRIVATE);
+        appContext = context.getApplicationContext();
+        sharedPreferences = appContext.getSharedPreferences(BuildConfig.APPLICATION_ID, Context.MODE_PRIVATE);
         sharedPreferences.registerOnSharedPreferenceChangeListener(this);
         APP                             = "com.offsec.nethunter";                // Static app name seems to be needed as some weirdness with getting app name is going on ( sometimes we get: androidx.multidex )
-        APP_PATH                        = "/data/data/" + APP;                   // context.getApplicationContext().getFilesDir().getPath();
+        APP_PATH                        = appContext.getFilesDir().getParent();   // /data/data/com.offsec.nethunter
         APP_DATABASE_PATH               = APP_PATH + "/databases";
         APP_INITD_PATH                  = APP_PATH + "/etc/init.d";
         APP_SCRIPTS_PATH                = APP_PATH + "/scripts";
         APP_NHFILES_PATH                = APP_PATH + "/nh_files";
         APP_SCRIPTS_BIN_PATH            = APP_SCRIPTS_PATH + "/bin";
-        APP_NHFILES_BACKUP_PATH         = "/sdcard/nh_files/backups";
+        APP_NHFILES_BACKUP_PATH         = getSdcardPath() + "/nh_files/backups";
         SD_PATH                         = getSdcardPath();
         NH_SD_FOLDER_NAME               = "nh_files";
         APP_SD_FILES_PATH               = SD_PATH + "/" + NH_SD_FOLDER_NAME;
@@ -61,7 +67,7 @@ public class NhPaths implements SharedPreferences.OnSharedPreferenceChangeListen
         CHROOT_SUDO                     = "/usr/bin/sudo";
         CHROOT_HOME                     = "/root";
         CHROOT_INITD_SCRIPT_PATH        = APP_INITD_PATH + "/80postservices";
-        CHROOT_SD_PATH                  = "/sdcard";
+        CHROOT_SD_PATH                  = getSdcardPath();
         CHROOT_SYMLINK_PATH             = NH_SYSTEM_PATH + "/kalifs";
         BUSYBOX                         = getBusyboxPath();
         MAGISK_DB_PATH                  = "/data/adb/magisk.db";
@@ -89,8 +95,39 @@ public class NhPaths implements SharedPreferences.OnSharedPreferenceChangeListen
         return NH_SYSTEM_PATH + "/" + ARCH_FOLDER;
     }
 
+    @SuppressLint("SdCardPath")
     private static String getSdcardPath(){
-        return Environment.getExternalStorageDirectory().toString();
+        // Derive the primary external storage root based on the app's external files dir,
+        // e.g. /storage/emulated/0/Android/data/com.offsec.nethunter/files -> /storage/emulated/0
+        try {
+            if (appContext != null) {
+                File extFiles = appContext.getExternalFilesDir(null);
+                if (extFiles != null) {
+                    // Walk up until we reach the segment just before /Android
+                    File current = extFiles;
+                    while (current.getParentFile() != null) {
+                        if ("Android".equals(current.getName())) {
+                            File root = current.getParentFile();
+                            return root.getAbsolutePath();
+                        }
+                        current = current.getParentFile();
+                    }
+                    // Fallback: /storage/emulated/0 style by trimming /Android/data/... if present
+                    String path = extFiles.getAbsolutePath();
+                    int idx = path.indexOf("/Android/");
+                    if (idx > 0) {
+                        return path.substring(0, idx);
+                    }
+                    return path; // last resort: use full external files dir path
+                }
+            }
+        } catch (Throwable ignored) {
+            // fall through to hardcoded fallback
+        }
+
+        // Final strict fallback: use the conventional /sdcard mount NetHunter expects,
+        // without calling Environment.getExternalStorageDirectory().
+        return "/sdcard";
     }
 
     public static String getBusyboxPath() {
