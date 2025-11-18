@@ -34,6 +34,7 @@ import android.view.MenuItem;
 import android.view.ScaleGestureDetector;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.Window;
 import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -45,6 +46,9 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.SearchView;
 import androidx.core.content.ContextCompat;
 import androidx.core.view.MenuProvider;
+import androidx.core.view.WindowCompat;
+import androidx.core.view.WindowInsetsCompat;
+import androidx.core.view.WindowInsetsControllerCompat;
 import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.DefaultItemAnimator;
 import androidx.recyclerview.widget.LinearLayoutManager;
@@ -1133,41 +1137,55 @@ public class TerminalFragment extends Fragment implements MenuProvider {
         isFullscreen = !isFullscreen;
         updateFullscreenIcon();
         updateFullscreenFabIcon();
-        
+
         if (getActivity() instanceof AppCompatActivity) {
             AppCompatActivity activity = (AppCompatActivity) getActivity();
-            View decorView = activity.getWindow().getDecorView();
-            
+
             if (isFullscreen) {
-                // Enter fullscreen mode
-                int uiOptions = View.SYSTEM_UI_FLAG_FULLSCREEN
-                        | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
-                        | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY;
-                decorView.setSystemUiVisibility(uiOptions);
-                
+                enterFullscreen(activity);
+
                 // Hide action bar
                 if (activity.getSupportActionBar() != null) {
                     activity.getSupportActionBar().hide();
                 }
-                
+
                 // Show fullscreen FAB (to allow exiting fullscreen)
                 if (fabFullscreen != null) {
                     fabFullscreen.show();
                 }
             } else {
-                // Exit fullscreen mode
-                decorView.setSystemUiVisibility(View.SYSTEM_UI_FLAG_VISIBLE);
-                
+                exitFullscreen(activity);
+
                 // Show action bar
                 if (activity.getSupportActionBar() != null) {
                     activity.getSupportActionBar().show();
                 }
-                
+
                 // Hide fullscreen FAB (menu is available again)
                 if (fabFullscreen != null) {
                     fabFullscreen.hide();
                 }
             }
+        }
+    }
+
+    private void enterFullscreen(@NonNull AppCompatActivity activity) {
+        Window window = activity.getWindow();
+        View decorView = window.getDecorView();
+        WindowInsetsControllerCompat controller = WindowCompat.getInsetsController(window, decorView);
+        if (controller != null) {
+            controller.hide(WindowInsetsCompat.Type.statusBars() | WindowInsetsCompat.Type.navigationBars());
+            controller.setSystemBarsBehavior(WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);
+        }
+    }
+
+    private void exitFullscreen(@NonNull AppCompatActivity activity) {
+        Window window = activity.getWindow();
+        View decorView = window.getDecorView();
+        WindowInsetsControllerCompat controller = WindowCompat.getInsetsController(window, decorView);
+        if (controller != null) {
+            controller.show(WindowInsetsCompat.Type.statusBars() | WindowInsetsCompat.Type.navigationBars());
+            controller.setSystemBarsBehavior(WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);
         }
     }
 
