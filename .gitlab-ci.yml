@@ -1,4 +1,5 @@
-## REF: https://hub.docker.com/r/jangrewe/gitlab-ci-android
+## Reference image with Android SDK + NDK + build tools
+## https://hub.docker.com/r/jangrewe/gitlab-ci-android
 image: docker.io/jangrewe/gitlab-ci-android
 
 stages:
@@ -8,28 +9,33 @@ before_script:
   - apt update && apt install -y openjdk-21-jdk
   - export JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64
   - export PATH=$JAVA_HOME/bin:$PATH
+  - echo "Using JAVA_HOME=$JAVA_HOME"
   - java -version
+
   - rm -f ~/.gradle/gradle.properties
   - mkdir -p ~/.gradle
   - echo "org.gradle.java.home=$JAVA_HOME" > ~/.gradle/gradle.properties
-  - echo "org.gradle.java.home=$JAVA_HOME" >> gradle.properties
+
+  - echo "org.gradle.daemon=false" >> ~/.gradle/gradle.properties
+
   - export GRADLE_USER_HOME=$(pwd)/.gradle
   - export PACKAGE=$(sed -n 's/.*package="\([^"]*\)".*/\1/p' ./AndroidManifest.xml)
   - if test -z "${PACKAGE}"; then export PACKAGE=$(sed -n 's/.*applicationId[[:blank:]]*"\([^"]*\)".*/\1/p' ./build.gradle); fi
   - export VERSION_NAME=$(sed -n 's/.*versionName[[:blank:]]*"\([^"]*\)".*/\1/p' ./build.gradle)
   - export VERSION_CODE=$(sed -n 's/.*versionCode[[:blank:]]*\([0-9]*\).*/\1/p' ./build.gradle)
   - export APK_NAME="${PACKAGE}_${VERSION_CODE}"
+
   - chmod +x ./gradlew && mkdir -p ./result/
-  - echo $PACKAGE
-  - echo $VERSION_NAME
-  - echo $VERSION_CODE
-  - echo $APK_NAME
+
+  - echo "PACKAGE=$PACKAGE"
+  - echo "VERSION_NAME=$VERSION_NAME"
+  - echo "VERSION_CODE=$VERSION_CODE"
+  - echo "APK_NAME=$APK_NAME"
 
 after_script:
   - ls result/
-  - if [ -d /tmp/result ]; then cp -v result/* /tmp/result; fi # Copy it to host if run locally
+  - if [ -d /tmp/result ]; then cp -v result/* /tmp/result; fi
 
-# Share caches between jobs
 cache:
   key: ${CI_PROJECT_ID}
   paths:
@@ -39,7 +45,7 @@ cache:
   stage: build
   script:
     - set -e
-    - ./gradlew assembleDebug
+    - ./gradlew --no-daemon --stacktrace assembleDebug
     - ls ./build/outputs/apk/debug/
     - mv -v ./build/outputs/apk/debug/*-debug.apk ./result/${APK_NAME}-debug.apk
   artifacts:
@@ -52,7 +58,7 @@ cache:
   stage: build
   script:
     - set -e
-    - ./gradlew assembleRelease
+    - ./gradlew --no-daemon --stacktrace assembleRelease
     - ls ./build/outputs/apk/release/
     - mv -v ./build/outputs/apk/release/*-release-unsigned.apk ./result/${APK_NAME}.apk
   artifacts:
@@ -60,6 +66,7 @@ cache:
     paths:
       - ./result/*.apk
     expire_in: 1 week
+
 
 assembleDebugAuto:
   extends: .assembleDebug
