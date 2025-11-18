@@ -1,6 +1,7 @@
 package com.offsec.nethunter;
 
 import android.Manifest;
+import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
@@ -14,6 +15,7 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuInflater;
@@ -47,6 +49,7 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.offsec.nethunter.bridge.Bridge;
 import com.offsec.nethunter.utils.NhPaths;
 import com.offsec.nethunter.utils.ShellExecuter;
+import com.offsec.nethunter.utils.PermissionCheck;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -121,19 +124,21 @@ public class BTFragment extends Fragment {
 
     private void ensureRuntimePermissions() {
         ArrayList<String> missing = new ArrayList<>();
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
-                missing.add(Manifest.permission.BLUETOOTH_CONNECT);
-            }
-            // Request SCAN as well for completeness on API 31+
-            if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.BLUETOOTH_SCAN) != PackageManager.PERMISSION_GRANTED) {
-                missing.add(Manifest.permission.BLUETOOTH_SCAN);
+        // Centralize Bluetooth-related permissions via PermissionCheck.Permissions
+        PermissionCheck.Permissions p = new PermissionCheck.Permissions();
+        for (String perm : PermissionCheck.Permissions.BLUETOOTH_PERMISSIONS) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
+                    ContextCompat.checkSelfPermission(requireContext(), perm) != PackageManager.PERMISSION_GRANTED) {
+                missing.add(perm);
             }
         }
         // Media/file read for audio/text selections
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.READ_MEDIA_AUDIO) != PackageManager.PERMISSION_GRANTED) {
-                missing.add(Manifest.permission.READ_MEDIA_AUDIO);
+            for (String perm : p.MEDIA_PERMISSIONS) {
+                if (perm.equals(Manifest.permission.READ_MEDIA_AUDIO) &&
+                        ContextCompat.checkSelfPermission(requireContext(), perm) != PackageManager.PERMISSION_GRANTED) {
+                    missing.add(perm);
+                }
             }
         } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
@@ -174,7 +179,7 @@ public class BTFragment extends Fragment {
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        getContext();
+        Context context = getContext();
         activity = getActivity();
     }
 
@@ -739,7 +744,6 @@ public class BTFragment extends Fragment {
         public void onCreate(@Nullable Bundle savedInstanceState) {
             super.onCreate(savedInstanceState);
             context = getContext();
-            getActivity();
         }
 
         @Override
@@ -1188,33 +1192,30 @@ public class BTFragment extends Fragment {
                                     }
                                 }
                             } catch (IOException e) {
-                                e.printStackTrace();
-                            } finally {
-                                audioTrack.release();
-                            }
-                        } else {
-                            try (InputStream s = new FileInputStream(cw_listenfile)) {
-                                assert audioTrack != null;
-                                audioTrack.play();
-                                byte[] data = new byte[200];
-                                int n;
-                                while ((n = s.read(data)) != -1) {
-                                    synchronized (audioTrack) {
-                                        audioTrack.write(data, 0, n);
-                                    }
-                                }
+                                Log.e("BTFragment", "Error playing audio (O+)", e);
+                             } finally {
+                                 audioTrack.release();
+                             }
+                         } else {
+                             try (InputStream s = new FileInputStream(cw_listenfile)) {
+                                 audioTrack.play();
+                                 byte[] data = new byte[200];
+                                 int n;
+                                 while ((n = s.read(data)) != -1) {
+                                     synchronized (audioTrack) {
+                                         audioTrack.write(data, 0, n);
+                                     }
+                                 }
                             } catch (IOException e) {
-                                e.printStackTrace();
-                            } finally {
-                                assert audioTrack != null;
-                                audioTrack.release();
-                            }
-                        }
-                    });
-                }
-            });
+                                Log.e("BTFragment", "Error playing audio (pre-O)", e);
+                             } finally {
+                                 audioTrack.release();
+                             }
+                         }
+                     });
+                 }
+             });
             StopAudioButton.setOnClickListener(v -> {
-                assert audioTrack != null;
                 audioTrack.pause();
                         audioTrack.flush();
             });
@@ -1641,7 +1642,7 @@ public class BTFragment extends Fragment {
     ////
 
     public void run_cmd(String cmd) {
-        Intent intent = Bridge.createExecuteIntent("/data/data/com.offsec.nhterm/files/usr/bin/kali", cmd);
+        @SuppressLint("SdCardPath") Intent intent = Bridge.createExecuteIntent("/data/data/com.offsec.nhterm/files/usr/bin/kali", cmd);
         activity.startActivity(intent);
     }
 
