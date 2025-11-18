@@ -5,6 +5,7 @@ import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.os.Build;
 import android.os.Bundle;
 import android.text.TextUtils;
 import android.util.Log;
@@ -28,6 +29,7 @@ import com.offsec.nethunter.bridge.Bridge;
 import com.offsec.nethunter.gps.KaliGPSUpdates;
 import com.offsec.nethunter.gps.LocationUpdateService;
 import com.offsec.nethunter.utils.NhPaths;
+import com.offsec.nethunter.utils.PermissionCheck;
 import com.offsec.nethunter.utils.ShellExecuter;
 
 import androidx.activity.result.ActivityResultLauncher;
@@ -121,8 +123,11 @@ public class KaliGpsServiceFragment extends Fragment implements KaliGPSUpdates.R
                 }
         );
 
-        if (context != null && android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
-            if (ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_BACKGROUND_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+        if (context != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            // Use PermissionCheck group to determine if background location is part of the missing set
+            PermissionCheck.Permissions perms = new PermissionCheck.Permissions();
+            boolean hasAllLocation = PermissionCheck.hasPermissions(context, perms.LOCATION_PERMISSIONS);
+            if (!hasAllLocation && ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_BACKGROUND_LOCATION) != PackageManager.PERMISSION_GRANTED) {
                 backgroundLocationPermissionLauncher.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION);
             }
         }
