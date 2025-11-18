@@ -250,7 +250,7 @@ public class TerminalService extends Service {
                 int[] res;
                 boolean useChrootDirect = true;
                 if (PtyNative.isLoaded()) {
-                    if (useChrootDirect && isChrootAvailable()) {
+                    if (isChrootAvailable()) {
                         String resolvedShell = resolvePreferredShell(ctx);
                         String chrootCmd = buildChrootShellCommand(ctx, resolvedShell);
                         res = PtyNative.openPtyShellExec(chrootCmd);
@@ -489,17 +489,11 @@ public class TerminalService extends Service {
 
     private void updateForegroundNotification() {
         Notification n = buildNotification();
-        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
-            // TODO: Consider calling
-            //    ActivityCompat#requestPermissions
-            // here to request the missing permissions, and then overriding
-            //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
-            //                                          int[] grantResults)
-            // to handle the case where the user grants the permission. See the documentation
-            // for ActivityCompat#requestPermissions for more details.
-            return;
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED) {
+            NotificationManagerCompat.from(this).notify(NOTIFY_ID, n);
+        } else {
+            Log.d(TAG, "POST_NOTIFICATIONS not granted; skipping TerminalService notification update.");
         }
-        NotificationManagerCompat.from(this).notify(NOTIFY_ID, n);
     }
 
     private Notification buildNotification() {
