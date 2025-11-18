@@ -1,11 +1,11 @@
 package com.offsec.nethunter.SQL;
 
 import android.content.ContentValues;
+import android.os.Environment;
 import android.content.Context;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
-import android.os.Environment;
 import android.text.TextUtils;
 import android.util.Log;
 
@@ -206,21 +206,18 @@ public class CustomCommandsSQL extends SQLiteOpenHelper {
 
     public String backupData(String storedDBpath) {
         try {
-            File sd = Environment.getExternalStorageDirectory();
             File data = Environment.getDataDirectory();
-            if (sd.canWrite()) {
-                String currentDBPath = data.getAbsolutePath() + "/data/" + BuildConfig.APPLICATION_ID + "/databases/" + DATABASE_NAME;
-                File currentDB = new File(currentDBPath);
-                File backupDB = new File(storedDBpath);
-                if (currentDB.exists()) {
-                    try (FileInputStream fis = new FileInputStream(currentDB);
-                         FileOutputStream fos = new FileOutputStream(backupDB);
-                         FileChannel src = fis.getChannel();
-                         FileChannel dst = fos.getChannel()) {
-                        dst.transferFrom(src, 0, src.size());
-                    } catch (IOException e) {
-                        Log.e(TAG, e.toString());
-                    }
+            String currentDBPath = data.getAbsolutePath() + "/data/" + BuildConfig.APPLICATION_ID + "/databases/" + DATABASE_NAME;
+            File currentDB = new File(currentDBPath);
+            File backupDB = new File(storedDBpath);
+            if (currentDB.exists()) {
+                try (FileInputStream fis = new FileInputStream(currentDB);
+                     FileOutputStream fos = new FileOutputStream(backupDB);
+                     FileChannel src = fis.getChannel();
+                     FileChannel dst = fos.getChannel()) {
+                    dst.transferFrom(src, 0, src.size());
+                } catch (IOException e) {
+                    Log.e(TAG, e.toString());
                 }
             }
         } catch (Exception e) {
