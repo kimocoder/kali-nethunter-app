@@ -130,11 +130,12 @@ public class LocationUpdateService extends Service {
                 .build();
 
         Log.d(TAG, "Requesting permissions ..");
-        if (PermissionCheck.hasPermissions(this, new String[]{
+        // Only bail out if we are actually missing required location permissions
+        if (!PermissionCheck.hasPermissions(this, new String[]{
                 Manifest.permission.ACCESS_FINE_LOCATION,
                 Manifest.permission.ACCESS_COARSE_LOCATION
         })) {
-            Log.d(TAG, "Location permissions not granted. Requesting permissions.");
+            Log.d(TAG, "Location permissions not granted in service; startLocationUpdates() will not proceed.");
             return;
         }
 
@@ -172,11 +173,10 @@ public class LocationUpdateService extends Service {
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
                 ActivityCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
-            Log.d(TAG, "POST_NOTIFICATIONS permission not granted. Requesting permission.");
-            requestPostNotificationsPermission(this);
-            return;
+            Log.d(TAG, "POST_NOTIFICATIONS not granted; skipping foreground notification update.");
+        } else {
+            notificationManagerCompat.notify(NOTIFY_ID, notification);
         }
-        notificationManagerCompat.notify(NOTIFY_ID, notification);
 
         this.startForeground(NOTIFY_ID, notification);
         Log.d(TAG, "starting Notification Update Timer");
@@ -335,11 +335,10 @@ public class LocationUpdateService extends Service {
         Notification notification = builder.build();
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
                 ActivityCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
-            Log.d(TAG, "POST_NOTIFICATIONS permission not granted. Requesting permission.");
-            requestPostNotificationsPermission(this);
-            return;
+            Log.d(TAG, "POST_NOTIFICATIONS not granted; skipping foreground notification update.");
+        } else {
+            notificationManagerCompat.notify(NOTIFY_ID, notification);
         }
-        notificationManagerCompat.notify(NOTIFY_ID, notification);
         Log.d(TAG, "Notification Sent: " + updatedText);
     }
 
@@ -457,16 +456,6 @@ public class LocationUpdateService extends Service {
         locationUpdatesStarted = false;
         teardownGnssCallbacks();
         fusedLocationClient.removeLocationUpdates(locationListener);
-    }
-
-    private void requestPostNotificationsPermission(Context context) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && context instanceof Activity) {
-            ActivityCompat.requestPermissions(
-                    (Activity) context,
-                    new String[]{Manifest.permission.POST_NOTIFICATIONS},
-                    1
-            );
-        }
     }
 
     @Override
