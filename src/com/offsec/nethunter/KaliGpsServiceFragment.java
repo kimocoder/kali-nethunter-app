@@ -19,7 +19,6 @@ import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.CompoundButton;
 import android.widget.EditText;
-import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -429,9 +428,11 @@ public class KaliGpsServiceFragment extends Fragment implements KaliGPSUpdates.R
     public void onPositionUpdate(String nmeaSentences) {
         CharSequence charSequence = gpsTextView.getText();
         int maxLines = 20;
-        int index = TextUtils.lastIndexOf(charSequence, '\n', charSequence.length() - 1, maxLines);
-        if (index > 0) {
-            gpsTextView.getEditableText().delete(0, index);
+        if (charSequence.length() > 0) {
+            int index = TextUtils.lastIndexOf(charSequence, '\n', charSequence.length() - 1, maxLines);
+            if (index > 0) {
+                gpsTextView.getEditableText().delete(0, index);
+            }
         }
 
         List<Integer> snrs = extractSatelliteSnrs(nmeaSentences);
