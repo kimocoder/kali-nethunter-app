@@ -36,6 +36,8 @@ import com.offsec.nethunter.utils.ShellExecuter;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
+import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.Objects;
 import java.util.regex.Matcher;
@@ -72,11 +74,12 @@ public class WifipumpkinFragment extends Fragment {
             registerForActivityResult(new ActivityResultContracts.GetContent(), uri -> {
                 if (uri == null) return;
                 if (!isWp3Installed()) {
-                    NhPaths.showMessage(context, "Install wifipumpkin3 first.");
+                    NhPaths.showMessage(context, "Run setup first.");
                     return;
                 }
                 // Keep existing logic, but avoid root sed and bootkali wrapper
                 String FilePath = Objects.requireNonNull(uri.getPath());
+
                 // Map DocumentsProvider path to external storage path using NhPaths.SD_PATH
                 String sdPath = NhPaths.SD_PATH;
                 FilePath = FilePath.replace("/document/primary:", sdPath + "/");
@@ -85,7 +88,7 @@ public class WifipumpkinFragment extends Fragment {
                 String FilePy = exe.RunAsChrootOutput(
                         "unzip -Z1 " + shQuote(FilePath) + " | grep .py | awk -F'.' '{print $1}'");
 
-                run_cmd("wifipumpkin3 -x \"use misc.custom_captiveflask; install " + FilePy + " \\\"" +  FilePath + "\\\"; back; exit\";exit");
+                run_cmd("wifipumpkin3 -x \"use misc.custom_captiveflask; install " + FilePy + " " +  FilePath + "; back; exit\";cp -r /root/.config/wifipumpkin3/config/templates/" + FilePy + " /usr/share/wifipumpkin3/config/templates/; exit");
             });
 
     public static WifipumpkinFragment newInstance(int sectionNumber) {
@@ -156,21 +159,20 @@ public class WifipumpkinFragment extends Fragment {
                 } else {
                     PreviewCheckbox.setEnabled(true);
                     if (selected_template.equals("FlaskDemo")) {
-                    template_src = NhPaths.CHROOT_PATH() + NhPaths.SD_PATH + "/nh_files/templates/" + selected_template + "/templates/En/templates/login.html";
+                    template_src = NhPaths.CHROOT_PATH() + "/usr/share/wifipumpkin3/config/templates/" + selected_template + "/templates/En/templates/login.html";
                     } else {
-                    template_src = NhPaths.CHROOT_PATH() + NhPaths.SD_PATH + "/nh_files/templates/" + selected_template + "/templates/login.html";
+                    template_src = NhPaths.CHROOT_PATH() + "/usr/share/wifipumpkin3/config/templates/" + selected_template + "/templates/login.html";
                     }
                     myBrowser.clearCache(true);
                     myBrowser.getSettings().setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
                     myBrowser.getSettings().setDomStorageEnabled(true);
                     myBrowser.getSettings().setLoadsImagesAutomatically(true);
-                    //myBrowser.setInitialScale(200);
                     myBrowser.getSettings().setJavaScriptEnabled(true); // Enable JavaScript Support
                     myBrowser.setWebViewClient(new WebViewClient());
                     myBrowser.getSettings().setAllowFileAccess(true);
-                    String externalStoragePath = NhPaths.SD_PATH;
-                    myBrowser.loadDataWithBaseURL("file://" + externalStoragePath + "/nh_files/templates/" + selected_template + "/static", template_src, "text/html", "UTF-8", null);
-                    myBrowser.loadUrl(externalStoragePath + "/nh_files/templates/" + selected_template + "/templates/login.html");
+                    String data = exe.RunAsRootOutput("cat " + template_src);
+                    //myBrowser.loadDataWithBaseURL("file:///" + NhPaths.CHROOT_PATH() + "/usr/share/wifipumpkin3/config/templates/" + selected_template, data, "text/html", "UTF-8", null);
+                    myBrowser.loadUrl(template_src);
                     TemplateString[0] = selected_template;
                 }
             }
@@ -341,6 +343,10 @@ public class WifipumpkinFragment extends Fragment {
             RunSetup();
             sharedpreferences.edit().putBoolean("wp3_setup_done", true).apply();
         });
+        builder.setNegativeButton("Disable message", (dialog, which) -> {
+            dialog.dismiss();
+            sharedpreferences.edit().putBoolean("wp3_setup_done", true).apply();
+        });
         builder.show();
     }
 
@@ -393,7 +399,7 @@ public class WifipumpkinFragment extends Fragment {
                 return;
             }
 
-            String cmd = "ls -1 /usr/share/wifipumpkin3/config/templates 2>/dev/null | sort";
+            String cmd = "ls -1 /root/.config/wifipumpkin3/config/templates | sort";
             //Log.d(TAG, "refresh_wp3_templates: executing chroot cmd: " + cmd);
             String out = exe.RunAsChrootOutput(cmd);
             //Log.d(TAG, "refresh_wp3_templates: rawOut=" + (out == null ? "null" : ("len=" + out.length())));
