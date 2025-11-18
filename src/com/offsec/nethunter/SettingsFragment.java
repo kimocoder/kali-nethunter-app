@@ -5,7 +5,6 @@ import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
-import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.net.Uri;
 import android.os.Build;
@@ -44,11 +43,11 @@ import androidx.appcompat.app.AppCompatActivity;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.offsec.nethunter.bridge.Bridge;
 import com.offsec.nethunter.utils.NhPaths;
+import com.offsec.nethunter.utils.PermissionCheck;
 import com.offsec.nethunter.utils.ShellExecuter;
 
 import java.io.File;
 import java.text.SimpleDateFormat;
-import java.util.Arrays;
 import java.util.Date;
 import java.util.Locale;
 import java.util.Objects;
@@ -73,16 +72,10 @@ public class SettingsFragment extends Fragment {
             Log.d(TAG, "MANAGE_EXTERNAL_STORAGE permission check: " + (granted ? "GRANTED" : "DENIED"));
             return granted;
         } else {
-            boolean readGranted = false;
-            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
-                readGranted = requireContext().checkSelfPermission(android.Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED;
-            }
-            boolean writeGranted = false;
-            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
-                writeGranted = requireContext().checkSelfPermission(android.Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED;
-            }
-            Log.d(TAG, "READ/WRITE_EXTERNAL_STORAGE permission check: " + (readGranted && writeGranted ? "GRANTED" : "DENIED"));
-            return readGranted && writeGranted;
+            PermissionCheck.Permissions perms = new PermissionCheck.Permissions();
+            boolean granted = PermissionCheck.hasPermissions(requireContext(), perms.STORAGE_PERMISSIONS);
+            Log.d(TAG, "READ/WRITE_EXTERNAL_STORAGE permission check: " + (granted ? "GRANTED" : "DENIED"));
+            return granted;
         }
     }
 
