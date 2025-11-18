@@ -1,12 +1,10 @@
 package com.offsec.nethunter.service;
 
 import android.Manifest;
-import android.app.Activity;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.Service;
-import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.os.Build;
@@ -14,6 +12,7 @@ import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.IBinder;
 import android.os.Process;
+import android.util.Log;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -21,7 +20,6 @@ import androidx.core.app.ActivityCompat;
 import androidx.core.app.NotificationCompat;
 import androidx.core.app.NotificationManagerCompat;
 import androidx.core.app.TaskStackBuilder;
-import androidx.core.content.ContextCompat;
 
 import com.offsec.nethunter.Executor.CustomCommandsExecutor;
 import com.offsec.nethunter.BuildConfig;
@@ -29,6 +27,7 @@ import com.offsec.nethunter.R;
 
 public class NotificationChannelService extends Service {
     public static final String CHANNEL_ID = "NethunterNotifyChannel";
+    private static final String TAG = "NotificationService";
     public static final int NOTIFY_ID = 1002;
     public static final String REMINDMOUNTCHROOT = BuildConfig.APPLICATION_ID + ".REMINDMOUNTCHROOT";
     public static final String USENETHUNTER = BuildConfig.APPLICATION_ID + ".USENETHUNTER";
@@ -97,21 +96,11 @@ public class NotificationChannelService extends Service {
                         .setContentText("Please navigate to ChrootManager to setup your KaliChroot.")
                         .setPriority(NotificationCompat.PRIORITY_MAX)
                         .setContentIntent(resultPendingIntent);
-                if (hasPostNotificationPermission()) {
-                    requestPostNotificationsPermission(this);
-                    return;
+                if (ActivityCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED) {
+                    notificationManagerCompat.notify(NOTIFY_ID, builder.build());
+                } else {
+                    Log.d(TAG, "POST_NOTIFICATIONS not granted; skipping REMINDMOUNTCHROOT notification.");
                 }
-                if (ActivityCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
-                    // TODO: Consider calling
-                    //    ActivityCompat#requestPermissions
-                    // here to request the missing permissions, and then overriding
-                    //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
-                    //                                          int[] grantResults)
-                    // to handle the case where the user grants the permission. See the documentation
-                    // for ActivityCompat#requestPermissions for more details.
-                    return;
-                }
-                notificationManagerCompat.notify(NOTIFY_ID, builder.build());
                 break;
             case USENETHUNTER:
                 builder = new NotificationCompat.Builder(getApplicationContext(), CHANNEL_ID)
@@ -123,11 +112,11 @@ public class NotificationChannelService extends Service {
                         .setContentText("Happy hunting!")
                         .setPriority(NotificationCompat.PRIORITY_MAX)
                         .setContentIntent(resultPendingIntent);
-                if (hasPostNotificationPermission()) {
-                    requestPostNotificationsPermission(this);
-                    return;
+                if (ActivityCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED) {
+                    notificationManagerCompat.notify(NOTIFY_ID, builder.build());
+                } else {
+                    Log.d(TAG, "POST_NOTIFICATIONS not granted; skipping USENETHUNTER notification.");
                 }
-                notificationManagerCompat.notify(NOTIFY_ID, builder.build());
                 break;
             case DOWNLOADING:
                 builder = new NotificationCompat.Builder(getApplicationContext(), CHANNEL_ID)
@@ -195,21 +184,6 @@ public class NotificationChannelService extends Service {
                         .setContentIntent(resultPendingIntent);
                 notificationManagerCompat.notify(NOTIFY_ID, builder.build());
                 break;
-        }
-    }
-
-    private boolean hasPostNotificationPermission() {
-        return Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
-                ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED;
-    }
-
-    private void requestPostNotificationsPermission(Context context) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && context instanceof Activity) {
-            ActivityCompat.requestPermissions(
-                    (Activity) context,
-                    new String[]{Manifest.permission.POST_NOTIFICATIONS},
-                    1
-            );
         }
     }
 
