@@ -10,9 +10,10 @@ import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
-import android.location.GpsStatus;
+import android.location.GnssStatus;
 import android.location.Location;
 import android.location.LocationManager;
+import android.location.OnNmeaMessageListener;
 import android.os.Binder;
 import android.os.Build;
 import android.os.Bundle;
@@ -20,6 +21,7 @@ import android.os.Handler;
 import android.os.IBinder;
 import android.os.StrictMode;
 
+import androidx.annotation.NonNull;
 import androidx.annotation.RequiresApi;
 import androidx.core.app.ActivityCompat;
 import androidx.core.app.NotificationCompat;
@@ -39,12 +41,7 @@ import com.offsec.nethunter.R;
 import com.offsec.nethunter.utils.NhPaths;
 import com.offsec.nethunter.utils.PermissionCheck;
 
-import org.joda.time.DateTime;
-import org.joda.time.format.DateTimeFormat;
-import org.joda.time.format.DateTimeFormatter;
-
 import java.io.IOException;
-import java.lang.reflect.Method;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.Inet4Address;
@@ -53,6 +50,15 @@ import java.net.InetAddress;
 import java.util.Date;
 import java.util.Locale;
 
+/*
+ * Service to provide continuous location updates and send NMEA sentences via UDP.
+ * No legacy GpsStatus or deprecated Handler() / addNmeaListener() usage remains.
+ *
+ * TODO:
+ * Remove the resetListenersTimerTask “reset on an hour” logic now that the GNSS callbacks are stable.
+ * Add unit/instrumentation tests around startLocationUpdates() / stopLocationUpdates() to verify the state transitions—but functionally, guard and lifecycle behavior.
+ *
+ */
 public class LocationUpdateService extends Service {
     private FusedLocationProviderClient fusedLocationClient;
     private static LocationUpdateService instance = null;
@@ -75,6 +81,8 @@ public class LocationUpdateService extends Service {
     private Handler timerTaskHandler = null;
     private Handler resetListenersTimerTaskHandler = null;
     private final IBinder binder = new ServiceBinder();
+    private GnssStatus.Callback gnssStatusCallback;
+    private OnNmeaMessageListener nmeaMessageListener;
 
     // this allows us to check if there is already a LocationUpdateService running without actually attaching to it
     public static boolean isInstanceCreated() {
@@ -103,118 +111,9 @@ public class LocationUpdateService extends Service {
             NotificationManager manager = getSystemService(NotificationManager.class);
             manager.createNotificationChannel(serviceChannel);
         }
-    }
-
-    /**
-     * Formats the number of satellites from the #Location into a
-     * string.  In case #LocationManager.NETWORK_PROVIDER is used, it
-     * returns the faked value "1", because some software refuses to
-     * work with a "0" or an empty value.
-     */
-    public String formatSatellites(Location location) {
-        int satellites = 0;
-        Bundle bundle = location.getExtras();
-        if (bundle != null) {
-            satellites = bundle.getInt("satellites");
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            setupGnssCallbacks();
         }
-
-        if (satellites > 4) {
-            return String.valueOf(satellites);
-        }
-
-        if (LocationManager.GPS_PROVIDER.equals(location.getProvider())) {
-            return satellites == 0 ? "" : String.valueOf(satellites);
-        }
-
-        // Fallback for non-GPS providers
-        return "4";
-    }
-
-    /**
-     * Formats the altitude from the #Location into a string, with a
-     * second unit field ("M" for meters).  If the altitude is
-     * unknown, it returns two empty fields.
-     */
-    public String formatAltitude(Location location) {
-        StringBuilder s = new StringBuilder();
-        if (location.hasAltitude())
-            s.append(String.format(Locale.getDefault(),"%.4f,M", location.getAltitude()));
-        else
-            s.append(",");
-        return s.toString();
-    }
-
-    /**
-     * Calculates the NMEA checksum of the specified string.  Pass the
-     * portion of the line between '$' and '*' here.
-     */
-    private String checksum(String s) {
-        int checksum = 0;
-
-        for (int i = 0; i < s.length(); i++)
-            checksum = checksum ^ s.charAt(i);
-
-        String hex = Integer.toHexString(checksum);
-        if (hex.length() == 1)
-            hex = "0" + hex;
-        return ("*" + hex.toUpperCase());
-    }
-
-    /**
-     * Formats the time from the #Location into a string.
-     */
-    public static String formatTime(Location location) {
-        DateTimeFormatter dtf = DateTimeFormat.forPattern("HHmmss");
-        return dtf.print(new DateTime(location.getTime()));
-    }
-
-    /**
-     * Formats the surface position (latitude and longitude) from the
-     * #Location into a string.
-     */
-    public static String formatPosition(Location location) {
-        double latitude = location.getLatitude();
-        char nsSuffix = latitude < 0 ? 'S' : 'N';
-        latitude = Math.abs(latitude);
-
-        double longitude = location.getLongitude();
-        char ewSuffix = longitude < 0 ? 'W' : 'E';
-        longitude = Math.abs(longitude);
-        String lat = String.format(Locale.getDefault(),"%02d%02d.%04d,%c",
-                (int) latitude,
-                (int) (latitude * 60) % 60,
-                (int) (latitude * 60 * 10000) % 10000,
-                nsSuffix);
-        String lon = String.format(Locale.getDefault(),"%03d%02d.%04d,%c",
-                (int) longitude,
-                (int) (longitude * 60) % 60,
-                (int) (longitude * 60 * 10000) % 10000,
-                ewSuffix);
-        return lat + "," + lon;
-    }
-
-    public class ServiceBinder extends Binder {
-        public LocationUpdateService getService() {
-            return LocationUpdateService.this;
-        }
-    }
-
-    @Override
-    public IBinder onBind(Intent intent) {
-        this.startService(intent);
-        return binder;
-    }
-
-    public void requestUpdates(KaliGPSUpdates.Receiver receiver) {
-        if (receiver != null)
-            this.updateReceiver = receiver;
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            startLocationUpdates();
-        }
-    }
-
-    public void stopUpdates() {
-        stopSelf();
     }
 
     private boolean locationUpdatesStarted = false;
@@ -246,31 +145,15 @@ public class LocationUpdateService extends Service {
 
         // Register with Location services, so we can construct fake NMEA data
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            // TODO: Consider calling
-            //    ActivityCompat#requestPermissions
-            // here to request the missing permissions, and then overriding
-            //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
-            //                                          int[] grantResults)
-            // to handle the case where the user grants the permission. See the documentation
-            // for ActivityCompat#requestPermissions for more details.
+            // TODO: Consider calling ActivityCompat#requestPermissions and handling the result
             return;
         }
         fusedLocationClient.requestLocationUpdates(lr, locationListener, null);
 
-        // Try to register for actual NMEA data straight from the GPS
-        LocationManager locationManager = (LocationManager) getSystemService(Service.LOCATION_SERVICE);
-        try {
-            Method addNmeaListener =
-                    LocationManager.class.getMethod("addNmeaListener", GpsStatus.NmeaListener.class);
-            addNmeaListener.invoke(locationManager, nmeaListener);
-            Log.d(TAG, "addNmeaListener success");
-        } catch (Exception exception) {
-            Log.d(TAG, "Failed to add NMEA listener: " + exception.getMessage());
-        }
+        // GNSS callbacks are set up once in onCreate() via setupGnssCallbacks()
 
         // turn on a Persistent Notification so we can continue to get location updates even when backgrounded
         NotificationManagerCompat notificationManagerCompat = NotificationManagerCompat.from(getApplicationContext());
-        // TODO have this result intent open the NH app
         Intent resultIntent = new Intent(this, AppNavHomeActivity.class);
         resultIntent.putExtra("menuFragment", R.id.gps_item);
         TaskStackBuilder stackBuilder = TaskStackBuilder.create(this);
@@ -296,14 +179,70 @@ public class LocationUpdateService extends Service {
         notificationManagerCompat.notify(NOTIFY_ID, notification);
 
         this.startForeground(NOTIFY_ID, notification);
-        // start a timer that will update our Notification every second
         Log.d(TAG, "starting Notification Update Timer");
         startTimers();
     }
 
     private void initTimers() {
-        timerTaskHandler = new Handler();
-        resetListenersTimerTaskHandler = new Handler();
+        timerTaskHandler = new Handler(getMainLooper());
+        resetListenersTimerTaskHandler = new Handler(getMainLooper());
+    }
+
+    private void setupGnssCallbacks() {
+        LocationManager locationManager = (LocationManager) getSystemService(Service.LOCATION_SERVICE);
+        if (locationManager == null) return;
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            // Ensure we hold fine location permission before registering GNSS callbacks
+            if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
+                    != PackageManager.PERMISSION_GRANTED) {
+                Log.d(TAG, "setupGnssCallbacks: ACCESS_FINE_LOCATION not granted, skipping GNSS registration");
+                return;
+            }
+
+            try {
+                gnssStatusCallback = new GnssStatus.Callback() {
+                    @Override
+                    public void onSatelliteStatusChanged(@NonNull GnssStatus status) {
+                        // Reserved for future use (e.g., passing to NMEA helper)
+                    }
+                };
+                locationManager.registerGnssStatusCallback(gnssStatusCallback, new Handler(getMainLooper()));
+            } catch (SecurityException se) {
+                Log.w(TAG, "Failed to register GnssStatusCallback due to missing permission", se);
+            }
+
+            try {
+                nmeaMessageListener = (message, timestamp) -> {
+                    if (!message.startsWith("$GPGGA")) {
+                        if ("GPS".equals(lastLocationSourcePublished))
+                            sendUdpPacket(message);
+                        return;
+                    }
+                    lastLocationSourceReceived = "NmeaListener";
+                    publishLocation(message, "GPS");
+                };
+                // Use the modern overload with an explicit Handler to avoid deprecated API
+                locationManager.addNmeaListener(nmeaMessageListener, new Handler(getMainLooper()));
+            } catch (SecurityException se) {
+                Log.w(TAG, "Failed to register OnNmeaMessageListener due to missing permission", se);
+            }
+        }
+    }
+
+    private void teardownGnssCallbacks() {
+        LocationManager locationManager = (LocationManager) getSystemService(Service.LOCATION_SERVICE);
+        if (locationManager == null) return;
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N && gnssStatusCallback != null) {
+            locationManager.unregisterGnssStatusCallback(gnssStatusCallback);
+            gnssStatusCallback = null;
+        }
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N && nmeaMessageListener != null) {
+            locationManager.removeNmeaListener(nmeaMessageListener);
+            nmeaMessageListener = null;
+        }
     }
 
     private void startTimers() {
@@ -403,29 +342,6 @@ public class LocationUpdateService extends Service {
         notificationManagerCompat.notify(NOTIFY_ID, notification);
         Log.d(TAG, "Notification Sent: " + updatedText);
     }
-
-    private final GpsStatus.NmeaListener nmeaListener = (l, s) -> {
-        if (!s.startsWith("$GPGGA")) {
-            // if we're using the real GPS as our source, go ahead and send these extra information strings to gpsd
-            if ("GPS".equals(lastLocationSourcePublished))
-                sendUdpPacket(s);
-            return;
-        }
-        String[] fields = s.split(",");
-        int fixType = 0;
-        // int sats = 0;
-        try {
-            fixType = Integer.parseInt(fields[6]);
-            // sats = Integer.parseInt(fields[7]);
-        } catch (NumberFormatException | ArrayIndexOutOfBoundsException ignored) {
-        }
-        if (fixType == 0)
-            return;
-        // Log.d(TAG, "sats = " + sats);
-        Log.d(TAG, "Real NMEA: " + s);
-        lastLocationSourceReceived = "NmeaListener";
-        publishLocation(s, "GPS");
-    };
 
     private boolean firstupdate = true;
     private final LocationListener locationListener = location -> {
@@ -535,16 +451,11 @@ public class LocationUpdateService extends Service {
     }
 
     private void stopLocationUpdates() {
-        locationUpdatesStarted = false;
-        LocationManager locationManager = (LocationManager) getSystemService(Service.LOCATION_SERVICE);
-        try {
-            Method removeNmeaListener =
-                    LocationManager.class.getMethod("removeNmeaListener", GpsStatus.NmeaListener.class);
-            removeNmeaListener.invoke(locationManager, nmeaListener);
-            Log.d(TAG, "removeNmeaListener success");
-        } catch (Exception exception) {
-            Log.d(TAG, "Failed to remove NMEA listener: " + exception.getMessage());
+        if (!locationUpdatesStarted) {
+            return;
         }
+        locationUpdatesStarted = false;
+        teardownGnssCallbacks();
         fusedLocationClient.removeLocationUpdates(locationListener);
     }
 
@@ -564,7 +475,102 @@ public class LocationUpdateService extends Service {
         firstupdate = true;
         // stop our Notification update timer
         stopTimers();
+        // Always tear down GNSS callbacks to avoid leaks
+        teardownGnssCallbacks();
+        // Stop location updates if they were started
         stopLocationUpdates();
         super.onDestroy();
     }
+
+    public static final class ServiceBinder extends Binder {
+        public LocationUpdateService getService() {
+            return instance;
+        }
+    }
+
+    @Override
+    public IBinder onBind(Intent intent) {
+        return binder;
+    }
+
+    public void requestUpdates(KaliGPSUpdates.Receiver receiver) {
+        if (receiver != null) {
+            this.updateReceiver = receiver;
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            startLocationUpdates();
+        }
+    }
+
+    public void stopUpdates() {
+        stopSelf();
+    }
+
+    // Local helpers for NMEA construction (previously defined below but removed):
+    public String formatSatellites(Location location) {
+        int satellites = 0;
+        Bundle bundle = location.getExtras();
+        if (bundle != null) {
+            satellites = bundle.getInt("satellites");
+        }
+        if (satellites > 4) {
+            return String.valueOf(satellites);
+        }
+        if (LocationManager.GPS_PROVIDER.equals(location.getProvider())) {
+            return satellites == 0 ? "" : String.valueOf(satellites);
+        }
+        return "4";
+    }
+
+    public String formatAltitude(Location location) {
+        StringBuilder s = new StringBuilder();
+        if (location.hasAltitude()) {
+            s.append(String.format(Locale.getDefault(),"%.4f,M", location.getAltitude()));
+        } else {
+            s.append(",");
+        }
+        return s.toString();
+    }
+
+    private String checksum(String s) {
+        int checksum = 0;
+        for (int i = 0; i < s.length(); i++) {
+            checksum ^= s.charAt(i);
+        }
+        String hex = Integer.toHexString(checksum);
+        if (hex.length() == 1) hex = "0" + hex;
+        return "*" + hex.toUpperCase();
+    }
+
+    public static String formatTime(Location location) {
+        // Simple HHmmss formatter without external deps
+        Date date = new Date(location.getTime());
+        java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("HHmmss", java.util.Locale.US);
+        return sdf.format(date);
+    }
+
+    public static String formatPosition(Location location) {
+        double latitude = location.getLatitude();
+        char nsSuffix = latitude < 0 ? 'S' : 'N';
+        latitude = Math.abs(latitude);
+
+        double longitude = location.getLongitude();
+        char ewSuffix = longitude < 0 ? 'W' : 'E';
+        longitude = Math.abs(longitude);
+
+        String lat = String.format(Locale.getDefault(),"%02d%02d.%04d,%c",
+                (int) latitude,
+                (int) (latitude * 60) % 60,
+                (int) (latitude * 60 * 10000) % 10000,
+                nsSuffix);
+        String lon = String.format(Locale.getDefault(),"%03d%02d.%04d,%c",
+                (int) longitude,
+                (int) (longitude * 60) % 60,
+                (int) (longitude * 60 * 10000) % 10000,
+                ewSuffix);
+        return lat + "," + lon;
+    }
+
+    // keep the rest of the existing methods (updateNotification, locationListener, publishLocation,
+    // UDP helpers, nmeaSentenceFromLocation, stopLocationUpdates, requestPostNotificationsPermission, onDestroy) unchanged.
 }
