@@ -9,6 +9,10 @@ before_script:
   - export JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64
   - export PATH=$JAVA_HOME/bin:$PATH
   - java -version
+  - rm -f ~/.gradle/gradle.properties
+  - mkdir -p ~/.gradle
+  - echo "org.gradle.java.home=$JAVA_HOME" > ~/.gradle/gradle.properties
+  - echo "org.gradle.java.home=$JAVA_HOME" >> gradle.properties
   - export GRADLE_USER_HOME=$(pwd)/.gradle
   - export PACKAGE=$(sed -n 's/.*package="\([^"]*\)".*/\1/p' ./AndroidManifest.xml)
   - if test -z "${PACKAGE}"; then export PACKAGE=$(sed -n 's/.*applicationId[[:blank:]]*"\([^"]*\)".*/\1/p' ./build.gradle); fi
