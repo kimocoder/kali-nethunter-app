@@ -8,7 +8,6 @@ import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Bundle;
-import android.os.Environment;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.Menu;
@@ -78,8 +77,8 @@ public class WifipumpkinFragment extends Fragment {
                 }
                 // Keep existing logic, but avoid root sed and bootkali wrapper
                 String FilePath = Objects.requireNonNull(uri.getPath());
-                // Map DocumentsProvider path to external storage path directly in Java
-                String sdPath = Environment.getExternalStorageDirectory().getPath();
+                // Map DocumentsProvider path to external storage path using NhPaths.SD_PATH
+                String sdPath = NhPaths.SD_PATH;
                 FilePath = FilePath.replace("/document/primary:", sdPath + "/");
 
                 // List files inside the zip and extract python filename (without .py)
@@ -169,7 +168,7 @@ public class WifipumpkinFragment extends Fragment {
                     myBrowser.getSettings().setJavaScriptEnabled(true); // Enable JavaScript Support
                     myBrowser.setWebViewClient(new WebViewClient());
                     myBrowser.getSettings().setAllowFileAccess(true);
-                    String externalStoragePath = Environment.getExternalStorageDirectory().getPath();
+                    String externalStoragePath = NhPaths.SD_PATH;
                     myBrowser.loadDataWithBaseURL("file://" + externalStoragePath + "/nh_files/templates/" + selected_template + "/static", template_src, "text/html", "UTF-8", null);
                     myBrowser.loadUrl(externalStoragePath + "/nh_files/templates/" + selected_template + "/templates/login.html");
                     TemplateString[0] = selected_template;
@@ -865,7 +864,7 @@ public class WifipumpkinFragment extends Fragment {
     ////
 
     public void run_cmd(String cmd) {
-        Intent intent = Bridge.createExecuteIntent("/data/data/com.offsec.nhterm/files/usr/bin/kali", cmd);
+        @SuppressLint("SdCardPath") Intent intent = Bridge.createExecuteIntent("/data/data/com.offsec.nhterm/files/usr/bin/kali", cmd);
         activity.startActivity(intent);
     }
 }
