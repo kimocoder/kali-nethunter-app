@@ -38,7 +38,7 @@ public class PermissionCheck {
 
     // Request permissions if not already granted
     public void checkPermissions(String[] permissions, int requestCode) {
-        if (hasPermissions(context, permissions)) {
+        if (!hasPermissions(context, permissions)) {
             ActivityCompat.requestPermissions(activity, permissions, requestCode);
         }
     }
@@ -52,35 +52,73 @@ public class PermissionCheck {
                 allGranted = false;
             }
         }
-        //if (allGranted) {
-            //Log.d(TAG, "All permissions are granted.");
-        //}
         return allGranted;
     }
 
     // Utility: Check if permissions are granted (static for use without instance)
-    public static boolean hasPermissions(Context context, String[] storagePermissions) {
-        Log.d(TAG, "hasPermissions called with context: " + context + ", permissions: " + Arrays.toString(storagePermissions));
-        if (context == null) {
-            Log.e(TAG, "Context is null");
+    public static boolean hasPermissions(Context context, String[] permissions) {
+        Log.d(TAG, "hasPermissions called with context: " + context + ", permissions: " + Arrays.toString(permissions));
+        if (context == null || permissions == null) {
+            Log.e(TAG, "Context or permissions array is null");
             return true;
         }
-        if (storagePermissions == null) {
-            Log.e(TAG, "Permissions array is null");
-            return true;
-        }
-        for (String permission : storagePermissions) {
+        for (String permission : permissions) {
             if (ContextCompat.checkSelfPermission(context, permission) != PackageManager.PERMISSION_GRANTED) {
-                Log.e(TAG, "Permission not granted: " + permission);
-                return true;
+                Log.d(TAG, "Missing permission: " + permission);
+                return false;
             }
         }
         Log.d(TAG, "All permissions granted");
-        return false;
+        return true;
     }
 
     public static void requestPermissions(Activity activity, String[] permissions, int requestCode) {
         ActivityCompat.requestPermissions(activity, permissions, requestCode);
+    }
+
+    // Centralized helpers for common groups
+    public boolean ensureLocationPermissions(int requestCode) {
+        Permissions p = new Permissions();
+        if (!hasPermissions(context, p.LOCATION_PERMISSIONS)) {
+            requestPermissions(activity, p.LOCATION_PERMISSIONS, requestCode);
+            return false;
+        }
+        return true;
+    }
+
+    public boolean ensureBluetoothPermissions(int requestCode) {
+        if (!hasPermissions(context, Permissions.BLUETOOTH_PERMISSIONS)) {
+            requestPermissions(activity, Permissions.BLUETOOTH_PERMISSIONS, requestCode);
+            return false;
+        }
+        return true;
+    }
+
+    public boolean ensureNotificationPermissions(int requestCode) {
+        Permissions p = new Permissions();
+        if (!hasPermissions(context, p.NOTIFICATION_PERMISSIONS)) {
+            requestPermissions(activity, p.NOTIFICATION_PERMISSIONS, requestCode);
+            return false;
+        }
+        return true;
+    }
+
+    public boolean ensureMediaPermissions(int requestCode) {
+        Permissions p = new Permissions();
+        if (!hasPermissions(context, p.MEDIA_PERMISSIONS)) {
+            requestPermissions(activity, p.MEDIA_PERMISSIONS, requestCode);
+            return false;
+        }
+        return true;
+    }
+
+    public boolean ensureStoragePermissions(int requestCode) {
+        Permissions p = new Permissions();
+        if (!hasPermissions(context, p.STORAGE_PERMISSIONS)) {
+            requestPermissions(activity, p.STORAGE_PERMISSIONS, requestCode);
+            return false;
+        }
+        return true;
     }
 
     // FROM PERMISSIONS CLASS
