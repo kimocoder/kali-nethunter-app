@@ -15,6 +15,7 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuInflater;
@@ -48,6 +49,7 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.offsec.nethunter.bridge.Bridge;
 import com.offsec.nethunter.utils.NhPaths;
 import com.offsec.nethunter.utils.ShellExecuter;
+import com.offsec.nethunter.utils.PermissionCheck;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -122,19 +124,21 @@ public class BTFragment extends Fragment {
 
     private void ensureRuntimePermissions() {
         ArrayList<String> missing = new ArrayList<>();
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
-                missing.add(Manifest.permission.BLUETOOTH_CONNECT);
-            }
-            // Request SCAN as well for completeness on API 31+
-            if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.BLUETOOTH_SCAN) != PackageManager.PERMISSION_GRANTED) {
-                missing.add(Manifest.permission.BLUETOOTH_SCAN);
+        // Centralize Bluetooth-related permissions via PermissionCheck.Permissions
+        PermissionCheck.Permissions p = new PermissionCheck.Permissions();
+        for (String perm : PermissionCheck.Permissions.BLUETOOTH_PERMISSIONS) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
+                    ContextCompat.checkSelfPermission(requireContext(), perm) != PackageManager.PERMISSION_GRANTED) {
+                missing.add(perm);
             }
         }
         // Media/file read for audio/text selections
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.READ_MEDIA_AUDIO) != PackageManager.PERMISSION_GRANTED) {
-                missing.add(Manifest.permission.READ_MEDIA_AUDIO);
+            for (String perm : p.MEDIA_PERMISSIONS) {
+                if (perm.equals(Manifest.permission.READ_MEDIA_AUDIO) &&
+                        ContextCompat.checkSelfPermission(requireContext(), perm) != PackageManager.PERMISSION_GRANTED) {
+                    missing.add(perm);
+                }
             }
         } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
@@ -175,7 +179,7 @@ public class BTFragment extends Fragment {
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        getContext();
+        Context context = getContext();
         activity = getActivity();
     }
 
@@ -315,11 +319,11 @@ public class BTFragment extends Fragment {
                 "git clone https://github.com/yesimxev/carwhisperer-0.2 /root/carwhisperer;" +
                 " cd /root/carwhisperer; make && make install; git clone https://github.com/yesimxev/bt_audit /root/bt_audit; cd /root/bt_audit/src; make;" +
                 " cp rfcomm_scan /usr/bin/; fi;" +
-                "if [ -f /usr/lib/libglibutil.so ]; then echo 'Libglibutil is installed!'; else git clone https://github.com/yesimxev/libglibutil /root/libglibutil;" +
+                "if [ -f /usr/lib/libglibutil.so ]; then echo 'libglibutil is installed!'; else git clone https://github.com/kimocoder/libglibutil /root/libglibutil;" +
                 " cd /root/libglibutil; make && make install-dev; fi;" +
-                "if [ -f /usr/lib/libgbinder.so ]; then echo 'Libgbinder is installed!'; else git clone https://github.com/yesimxev/libgbinder /root/libgbinder;" +
+                "if [ -f /usr/lib/libgbinder.so ]; then echo 'libgbinder is installed!'; else git clone https://github.com/kimocoder/libgbinder /root/libgbinder;" +
                 " cd /root/libgbinder; make && make install-dev; fi;" +
-                "if [ -f /usr/sbin/bluebinder ]; then echo 'Bluebinder is installed!'; else git clone https://github.com/yesimxev/bluebinder /root/bluebinder;" +
+                "if [ -f /usr/sbin/bluebinder ]; then echo 'bluebinder is installed!'; else git clone https://github.com/kimocoder/bluebinder /root/bluebinder;" +
                 " cd /root/bluebinder; make && make install; fi;" +
                 "if [ -f /root/badbt/btk_server.py ]; then echo 'BadBT is installed!'; else git clone https://github.com/yesimxev/badbt /root/badbt && cp /root/badbt/org.thanhle.btkbservice.conf /etc/dbus-1/system.d/; fi;" +
                 "if [ -f /etc/init.d/bluetooth ] && grep -q 'noplugin=input' /etc/init.d/bluetooth 2>/dev/null; then echo 'Bluetooth service is patched!'; else echo 'Patching Bluetooth service..' && " +
@@ -746,7 +750,6 @@ public class BTFragment extends Fragment {
         public void onCreate(@Nullable Bundle savedInstanceState) {
             super.onCreate(savedInstanceState);
             context = getContext();
-            getActivity();
         }
 
         @Override
@@ -1195,33 +1198,30 @@ public class BTFragment extends Fragment {
                                     }
                                 }
                             } catch (IOException e) {
-                                e.printStackTrace();
-                            } finally {
-                                audioTrack.release();
-                            }
-                        } else {
-                            try (InputStream s = new FileInputStream(cw_listenfile)) {
-                                assert audioTrack != null;
-                                audioTrack.play();
-                                byte[] data = new byte[200];
-                                int n;
-                                while ((n = s.read(data)) != -1) {
-                                    synchronized (audioTrack) {
-                                        audioTrack.write(data, 0, n);
-                                    }
-                                }
+                                Log.e("BTFragment", "Error playing audio (O+)", e);
+                             } finally {
+                                 audioTrack.release();
+                             }
+                         } else {
+                             try (InputStream s = new FileInputStream(cw_listenfile)) {
+                                 audioTrack.play();
+                                 byte[] data = new byte[200];
+                                 int n;
+                                 while ((n = s.read(data)) != -1) {
+                                     synchronized (audioTrack) {
+                                         audioTrack.write(data, 0, n);
+                                     }
+                                 }
                             } catch (IOException e) {
-                                e.printStackTrace();
-                            } finally {
-                                assert audioTrack != null;
-                                audioTrack.release();
-                            }
-                        }
-                    });
-                }
-            });
+                                Log.e("BTFragment", "Error playing audio (pre-O)", e);
+                             } finally {
+                                 audioTrack.release();
+                             }
+                         }
+                     });
+                 }
+             });
             StopAudioButton.setOnClickListener(v -> {
-                assert audioTrack != null;
                 audioTrack.pause();
                         audioTrack.flush();
             });
@@ -1647,7 +1647,7 @@ public class BTFragment extends Fragment {
     ////
 
     public void run_cmd(String cmd) {
-        Intent intent = Bridge.createExecuteIntent("/data/data/com.offsec.nhterm/files/usr/bin/kali", cmd);
+        @SuppressLint("SdCardPath") Intent intent = Bridge.createExecuteIntent("/data/data/com.offsec.nhterm/files/usr/bin/kali", cmd);
         activity.startActivity(intent);
     }
 

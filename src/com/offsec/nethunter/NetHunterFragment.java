@@ -213,7 +213,7 @@ public class NetHunterFragment extends Fragment {
     }
 
     private synchronized boolean nhFilesExists() {
-        File nhFilesDir = new File(Environment.getExternalStorageDirectory().getPath() + "/nh_files");
+        File nhFilesDir = new File(NhPaths.APP_SD_FILES_PATH);
         return nhFilesDir.exists() && nhFilesDir.isDirectory();
     }
 

@@ -250,7 +250,7 @@ public class TerminalService extends Service {
                 int[] res;
                 boolean useChrootDirect = true;
                 if (PtyNative.isLoaded()) {
-                    if (useChrootDirect && isChrootAvailable()) {
+                    if (isChrootAvailable()) {
                         String resolvedShell = resolvePreferredShell(ctx);
                         String chrootCmd = buildChrootShellCommand(ctx, resolvedShell);
                         res = PtyNative.openPtyShellExec(chrootCmd);
@@ -272,12 +272,140 @@ public class TerminalService extends Service {
                 s.out = new FileOutputStream(s.ptyPfd.getFileDescriptor());
                 s.readThread = new Thread(() -> readLoop(s), "pty-read-" + s.id);
                 s.readThread.start();
+                
                 // Write initial newline to prompt
                 send(s.id, "\n");
+                
+                // Send initialization commands after a short delay to ensure shell is ready
+                mainHandler.postDelayed(() -> {
+                    initializeShellEnvironment(ctx, s.id);
+                }, 500);
             } catch (Throwable t) {
                 Log.e(TAG, "startPtyForSession failed", t);
             }
         });
+    }
+
+    /**
+     * Initialize shell environment for a service session.
+     * Sends initialization commands to set up TERM, COLORTERM, LANG, LC_ALL, and PS1.
+     * 
+     * @param ctx Context for accessing preferences
+     * @param sessionId The session ID to initialize
+     */
+    private void initializeShellEnvironment(@NonNull Context ctx, int sessionId) {
+        // Check if auto-PS1 is enabled
+        android.content.SharedPreferences prefs = ctx.getSharedPreferences("terminal_prefs", Context.MODE_PRIVATE);
+        boolean autoPs1Enabled = prefs.getBoolean("auto_ps1_enabled", true);
+        
+        String shellPath = resolvePreferredShell(ctx);
+        StringBuilder init = new StringBuilder();
+        
+        // Disable terminal echo in PTY mode to prevent command duplication
+        init.append("stty -echo 2>/dev/null\n");
+        
+        // Set terminal environment variables for proper ANSI support
+        init.append("export TERM=xterm-256color\n");
+        init.append("export COLORTERM=truecolor\n");
+        init.append("export CLICOLOR_FORCE=1\n");
+        init.append("export FORCE_COLOR=1\n");
+        
+        // Set locale variables for proper character encoding
+        init.append("export LANG=en_US.UTF-8\n");
+        init.append("export LC_ALL=C\n");
+        
+        // Set PS1 prompt if auto-PS1 is enabled
+        if (autoPs1Enabled) {
+            String ps1Cmd = getPS1InitCommand(ctx, shellPath);
+            init.append(ps1Cmd).append("\n");
+        }
+        
+        // Change to home directory (fallback to current if /root doesn't exist)
+        init.append("cd /root 2>/dev/null || cd ~ 2>/dev/null || true\n");
+        
+        // Clear screen for clean start
+        init.append("clear\n");
+        
+        // Send initialization commands
+        send(sessionId, init.toString());
+        Log.d(TAG, "Sent shell initialization commands for session " + sessionId);
+    }
+
+    /**
+     * Build a clean PS1 prompt string based on shell type and user preferences.
+     * 
+     * @param ctx Context for accessing preferences
+     * @param shellPath The resolved shell path
+     * @return PS1 format string appropriate for the shell type
+     */
+    private String buildCleanPS1(@NonNull Context ctx, String shellPath) {
+        if (shellPath == null) shellPath = "/bin/bash";
+        
+        // Get user's PS1 style preference
+        android.content.SharedPreferences prefs = ctx.getSharedPreferences("terminal_prefs", Context.MODE_PRIVATE);
+        String style = prefs.getString("ps1_style", "standard");
+        String customPs1 = prefs.getString("ps1_custom", "");
+        
+        // If custom PS1 is provided, use it directly
+        if ("custom".equalsIgnoreCase(style) && !customPs1.trim().isEmpty()) {
+            return customPs1.trim();
+        }
+        
+        // Define presets
+        String minimalBash = "PS1='\\$ '";
+        String minimalZsh = "PS1='%# '";
+        String minimalSh = "PS1='$ '";
+        
+        String standardBash = "PS1='\\[\\e[1;32m\\]\\u@\\h\\[\\e[0m\\]:\\[\\e[1;34m\\]\\w\\[\\e[0m\\]\\$ '";
+        String standardZsh = "PS1='%F{green}%n@%m%f:%F{blue}%~%f%# '";
+        String standardSh = "PS1='\\u@\\h:\\w\\$ '";
+        
+        String fullBash = "PS1='\\[\\e[1;32m\\]\\u@\\h\\[\\e[0m\\]:\\[\\e[1;34m\\]\\w\\[\\e[0m\\] [\\t]\\$ '";
+        String fullZsh = "PS1='%F{green}%n@%m%f:%F{blue}%~%f [%*]%# '";
+        String fullSh = "PS1='\\u@\\h:\\w [\\t]\\$ '";
+        
+        // Select format based on style and shell type
+        String format;
+        if ("minimal".equalsIgnoreCase(style)) {
+            if (shellPath.endsWith("zsh")) {
+                format = minimalZsh;
+            } else if (shellPath.endsWith("bash")) {
+                format = minimalBash;
+            } else {
+                format = minimalSh;
+            }
+        } else if ("full".equalsIgnoreCase(style)) {
+            if (shellPath.endsWith("zsh")) {
+                format = fullZsh;
+            } else if (shellPath.endsWith("bash")) {
+                format = fullBash;
+            } else {
+                format = fullSh;
+            }
+        } else {
+            // Default to standard
+            if (shellPath.endsWith("zsh")) {
+                format = standardZsh;
+            } else if (shellPath.endsWith("bash")) {
+                format = standardBash;
+            } else {
+                format = standardSh;
+            }
+        }
+        
+        return format;
+    }
+
+    /**
+     * Generate shell-specific PS1 export command.
+     * 
+     * @param ctx Context for accessing preferences
+     * @param shellPath The resolved shell path
+     * @return Shell command to export PS1 variable
+     */
+    private String getPS1InitCommand(@NonNull Context ctx, String shellPath) {
+        String ps1Format = buildCleanPS1(ctx, shellPath);
+        return "export " + ps1Format;
     }
 
     private void readLoop(@NonNull Session s) {
@@ -361,17 +489,11 @@ public class TerminalService extends Service {
 
     private void updateForegroundNotification() {
         Notification n = buildNotification();
-        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
-            // TODO: Consider calling
-            //    ActivityCompat#requestPermissions
-            // here to request the missing permissions, and then overriding
-            //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
-            //                                          int[] grantResults)
-            // to handle the case where the user grants the permission. See the documentation
-            // for ActivityCompat#requestPermissions for more details.
-            return;
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED) {
+            NotificationManagerCompat.from(this).notify(NOTIFY_ID, n);
+        } else {
+            Log.d(TAG, "POST_NOTIFICATIONS not granted; skipping TerminalService notification update.");
         }
-        NotificationManagerCompat.from(this).notify(NOTIFY_ID, n);
     }
 
     private Notification buildNotification() {

@@ -12,7 +12,6 @@ import android.graphics.Color;
 import android.graphics.Typeface;
 import android.os.Build;
 import android.os.Bundle;
-import android.os.Environment;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.ParcelFileDescriptor;
@@ -35,6 +34,7 @@ import android.view.MenuItem;
 import android.view.ScaleGestureDetector;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.Window;
 import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -46,6 +46,9 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.SearchView;
 import androidx.core.content.ContextCompat;
 import androidx.core.view.MenuProvider;
+import androidx.core.view.WindowCompat;
+import androidx.core.view.WindowInsetsCompat;
+import androidx.core.view.WindowInsetsControllerCompat;
 import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.DefaultItemAnimator;
 import androidx.recyclerview.widget.LinearLayoutManager;
@@ -98,21 +101,33 @@ public class TerminalFragment extends Fragment implements MenuProvider {
     private static final String KEY_FIRST_RUN_SETUP_SHOWN = "first_run_setup_shown";
     private static final String KEY_PREF_INITIAL_CMD_TEXT = "initial_cmd_text";
     private static final String KEY_PREF_INITIAL_CMD_ENABLED = "initial_cmd_enabled";
+    private static final String KEY_AUTO_PS1_ENABLED = "auto_ps1_enabled";
+    private static final String KEY_PS1_STYLE = "ps1_style";
+    private static final String KEY_PS1_CUSTOM = "ps1_custom";
     private static final String DEFAULT_HOSTNAME = "kali";
     private static final int PERSISTENT_BUFFER_SIZE = 100;
-    private static final List<CharSequence> persistentLines = new ArrayList<>();
+    private final List<CharSequence> persistentLines = new ArrayList<>();
     private TextInputEditText inputEdit;
     private RecyclerView terminalRecycler;
     private TerminalAdapter terminalAdapter;
     private View ctrlButton;
     private com.google.android.material.floatingactionbutton.FloatingActionButton fabGoBottom;
     private com.google.android.material.floatingactionbutton.FloatingActionButton fabCopySelected;
+    private com.google.android.material.floatingactionbutton.FloatingActionButton fabFullscreen;
     private Process process;
     private volatile OutputStream outputStream;
-    private static volatile BufferedWriter writer;
+    private volatile BufferedWriter writer;
     private final Handler handler = new Handler(Looper.getMainLooper());
+    private final java.util.concurrent.ExecutorService ansiParserExecutor = 
+        java.util.concurrent.Executors.newSingleThreadExecutor();
     private Thread outputThread;
     private Thread errorThread;
+    
+    // Debouncing for rapid text updates
+    private final List<CharSequence> pendingLinesToAdd = new ArrayList<>();
+    private final Object pendingLinesLock = new Object();
+    private Runnable pendingFlushRunnable = null;
+    private static final long UI_UPDATE_DEBOUNCE_MS = 50; // 50ms debounce
     private final List<String> commandHistory = new ArrayList<>();
     private int historyIndex = -1;
     private String pendingCurrentLine = "";
@@ -127,7 +142,7 @@ public class TerminalFragment extends Fragment implements MenuProvider {
     private volatile int ptyPid = -1;
     private volatile ParcelFileDescriptor ptyPfd;
     private volatile FileInputStream ptyIn;
-    private static volatile FileOutputStream ptyOut;
+    private volatile FileOutputStream ptyOut;
     private Thread ptyReadThread;
     private SpannableStringBuilder currentLine = new SpannableStringBuilder();
     private int currentLineSegmentStart = 0;
@@ -141,6 +156,8 @@ public class TerminalFragment extends Fragment implements MenuProvider {
     private TerminalService boundService;
     private boolean serviceBound = false;
     private int serviceSessionId = -1;
+    private boolean isFullscreen = false;
+    private MenuItem fullscreenMenuItem;
 
     private static class ThemePreset {
         final String name; final int bg; final int fg;
@@ -157,6 +174,56 @@ public class TerminalFragment extends Fragment implements MenuProvider {
             new ThemePreset("Matrix", Color.parseColor("#000000"), Color.parseColor("#00FF00")),
             new ThemePreset("Kali Linux", Color.parseColor("#000000"), Color.parseColor("#DC143C"))
     };
+
+    /**
+     * PS1 prompt format presets for different shell types.
+     * Provides clean, readable prompt formats with minimal ANSI escape sequences.
+     */
+    private static class PS1Preset {
+        final String name;
+        final String bashFormat;
+        final String zshFormat;
+        final String shFormat;
+
+        PS1Preset(String name, String bashFormat, String zshFormat, String shFormat) {
+            this.name = name;
+            this.bashFormat = bashFormat;
+            this.zshFormat = zshFormat;
+            this.shFormat = shFormat;
+        }
+
+        /**
+         * Minimal prompt: just the prompt symbol ($ or #)
+         */
+        static final PS1Preset MINIMAL = new PS1Preset(
+            "Minimal",
+            "PS1='\\$ '",
+            "PS1='%# '",
+            "PS1='$ '"
+        );
+
+        /**
+         * Standard prompt: user@host:dir$
+         * Uses green for user@host, blue for directory
+         */
+        static final PS1Preset STANDARD = new PS1Preset(
+            "Standard",
+            "PS1='\\[\\e[1;32m\\]\\u@\\h\\[\\e[0m\\]:\\[\\e[1;34m\\]\\w\\[\\e[0m\\]\\$ '",
+            "PS1='%F{green}%n@%m%f:%F{blue}%~%f%# '",
+            "PS1='\\u@\\h:\\w\\$ '"
+        );
+
+        /**
+         * Full prompt: user@host:dir [time]$
+         * Includes timestamp for command tracking
+         */
+        static final PS1Preset FULL = new PS1Preset(
+            "Full",
+            "PS1='\\[\\e[1;32m\\]\\u@\\h\\[\\e[0m\\]:\\[\\e[1;34m\\]\\w\\[\\e[0m\\] [\\t]\\$ '",
+            "PS1='%F{green}%n@%m%f:%F{blue}%~%f [%*]%# '",
+            "PS1='\\u@\\h:\\w [\\t]\\$ '"
+        );
+    }
 
     public static TerminalFragment newInstance(int itemId) {
         TerminalFragment fragment = new TerminalFragment();
@@ -232,6 +299,13 @@ public class TerminalFragment extends Fragment implements MenuProvider {
                 fabCopySelected.hide();
                 if (terminalRecycler != null) terminalRecycler.requestFocus();
             });
+        }
+
+        fabFullscreen = view.findViewById(R.id.fab_fullscreen);
+        if (fabFullscreen != null) {
+            fabFullscreen.setOnClickListener(v -> toggleFullscreen());
+            updateFullscreenFabIcon();
+            makeFabDraggable(fabFullscreen);
         }
 
         terminalRecycler.addOnScrollListener(new RecyclerView.OnScrollListener() {
@@ -394,17 +468,243 @@ public class TerminalFragment extends Fragment implements MenuProvider {
         ctrlButton.setAlpha(ctrlButton.isEnabled() ? (ctrlSticky ? 1.0f : 0.95f) : 0.5f);
     }
 
+    // Tab completion state - synchronized access required
+    private final Object completionLock = new Object();
+    private volatile String completionOutput = "";
+    private volatile boolean waitingForCompletion = false;
+    private String lastCompletionInput = "";
+    private Thread completionThread;
+
     private void insertAtCursor() {
+        if (inputEdit == null) return;
+        
+        String currentText = inputEdit.getText() != null ? inputEdit.getText().toString() : "";
+        
+        // If empty or not ready, just insert tab
+        if (currentText.trim().isEmpty() || !isShellReady()) {
+            insertTabCharacter();
+            return;
+        }
+        
+        // Perform tab completion
+        performTabCompletion(currentText);
+    }
+
+    private void insertTabCharacter() {
         if (inputEdit == null) return;
         int start = inputEdit.getSelectionStart();
         int end = inputEdit.getSelectionEnd();
         Editable editable = inputEdit.getText();
         if (editable == null) return;
-        if (start < 0) start = editable.length(); if (end < 0) end = start;
+        if (start < 0) start = editable.length(); 
+        if (end < 0) end = start;
         editable.replace(Math.min(start, end), Math.max(start, end), "\t");
-        int newPos = Math.min(start, end) + 1; inputEdit.setSelection(newPos);
+        int newPos = Math.min(start, end) + 1; 
+        inputEdit.setSelection(newPos);
     }
 
+    private void performTabCompletion(String input) {
+        synchronized (completionLock) {
+            // Prevent multiple concurrent completions
+            if (waitingForCompletion) return;
+            
+            // Parse input to get word to complete
+            String[] words = input.trim().split("\\s+");
+            if (words.length == 0) return;
+            
+            String wordToComplete = words[words.length - 1];
+            String prefix = input.substring(0, input.lastIndexOf(wordToComplete));
+            boolean isFirstWord = words.length == 1;
+            
+            // Build compgen command
+            String compgenCmd;
+            if (isFirstWord) {
+                // Complete command names
+                compgenCmd = String.format("compgen -c '%s' 2>/dev/null", wordToComplete.replace("'", "'\\''"));
+            } else {
+                // Complete file/directory names
+                compgenCmd = String.format("compgen -f '%s' 2>/dev/null", wordToComplete.replace("'", "'\\''"));
+            }
+
+            // Execute command and capture output without visible markers
+            String fullCmd = "{ " + compgenCmd + "; } 2>/dev/null\n";
+            
+            // Cancel any existing completion thread
+            if (completionThread != null && completionThread.isAlive()) {
+                waitingForCompletion = false;
+                completionThread.interrupt();
+                try {
+                    completionThread.join(100); // Wait briefly for thread to finish
+                } catch (InterruptedException ignored) {
+                    Thread.currentThread().interrupt();
+                }
+            }
+            
+            // Set up completion state
+            waitingForCompletion = true;
+            completionOutput = "";
+            lastCompletionInput = input;
+            
+            // Create a temporary listener to capture completion output
+            final String finalPrefix = prefix;
+            final String finalWord = wordToComplete;
+            final long startTime = System.currentTimeMillis();
+            
+            completionThread = new Thread(() -> {
+                try {
+                    // Clear any previous completion output
+                    synchronized (completionLock) {
+                        completionOutput = "";
+                    }
+                    
+                    // Send completion command
+                    if (serviceBound && serviceSessionId > 0) {
+                        boundService.send(serviceSessionId, fullCmd);
+                    } else if (ptyOut != null) {
+                        writePty(fullCmd);
+                    } else if (writer != null) {
+                        synchronized (writer) {
+                            writer.write(fullCmd);
+                            writer.flush();
+                        }
+                    }
+                    
+                    // Wait for completion output (with shorter timeout)
+                    while (waitingForCompletion && !Thread.currentThread().isInterrupted() && (System.currentTimeMillis() - startTime) < 1000) {
+                        String currentOutput;
+                        synchronized (completionLock) {
+                            currentOutput = completionOutput;
+                        }
+                        
+                        // Check if we have output and it looks complete (ends with newline or prompt)
+                        if (!currentOutput.trim().isEmpty() && 
+                            (currentOutput.endsWith("\n") || currentOutput.contains("$") || currentOutput.contains("#"))) {
+                            // Process completions
+                            processCompletions(currentOutput.trim(), finalPrefix, finalWord);
+                            synchronized (completionLock) {
+                                waitingForCompletion = false;
+                            }
+                            break;
+                        }
+                        Thread.sleep(50);
+                    }
+                    
+                    synchronized (completionLock) {
+                        if (waitingForCompletion && !Thread.currentThread().isInterrupted()) {
+                            // Timeout - try to process whatever output we have
+                            String currentOutput = completionOutput.trim();
+                            if (!currentOutput.isEmpty()) {
+                                processCompletions(currentOutput, finalPrefix, finalWord);
+                            }
+                            waitingForCompletion = false;
+                        }
+                    }
+                } catch (InterruptedException e) {
+                    // Thread was interrupted, clean exit
+                    synchronized (completionLock) {
+                        waitingForCompletion = false;
+                    }
+                } catch (Exception e) {
+                    Log.e(TAG, "Error performing tab completion", e);
+                    synchronized (completionLock) {
+                        waitingForCompletion = false;
+                    }
+                }
+            }, "tab-completion");
+            completionThread.start();
+        }
+    }
+
+    private void processCompletions(String output, String prefix, String wordToComplete) {
+        String[] completions = output.trim().split("\n");
+        
+        // Filter out empty lines and the command itself
+        List<String> validCompletions = new ArrayList<>();
+        for (String completion : completions) {
+            String trimmed = completion.trim();
+            if (!trimmed.isEmpty() && !trimmed.equals(wordToComplete) && !trimmed.startsWith("compgen")) {
+                validCompletions.add(trimmed);
+            }
+        }
+        
+        handler.post(() -> {
+            if (!isAdded() || inputEdit == null) return;
+            
+            if (validCompletions.isEmpty()) {
+                // No completions found
+                Toast.makeText(requireContext(), "No completions found", Toast.LENGTH_SHORT).show();
+            } else if (validCompletions.size() == 1) {
+                // Single completion - auto-complete
+                String completed = validCompletions.get(0);
+                inputEdit.setText(prefix + completed + " ");
+                inputEdit.setSelection(inputEdit.getText().length());
+            } else {
+                // Multiple completions - find common prefix and show options
+                String commonPrefix = findCommonPrefix(validCompletions);
+                
+                if (commonPrefix.length() > wordToComplete.length()) {
+                    // There's a common prefix longer than what user typed - complete to that
+                    inputEdit.setText(prefix + commonPrefix);
+                    inputEdit.setSelection(inputEdit.getText().length());
+                }
+                
+                // Show completion options in a dialog
+                showCompletionDialog(validCompletions, prefix);
+            }
+        });
+    }
+
+    private String findCommonPrefix(List<String> completions) {
+        if (completions.isEmpty()) return "";
+        if (completions.size() == 1) return completions.get(0);
+        
+        String first = completions.get(0);
+        int prefixLen = 0;
+        
+        for (int i = 0; i < first.length(); i++) {
+            char c = first.charAt(i);
+            boolean allMatch = true;
+            
+            for (String completion : completions) {
+                if (i >= completion.length() || completion.charAt(i) != c) {
+                    allMatch = false;
+                    break;
+                }
+            }
+            
+            if (allMatch) {
+                prefixLen = i + 1;
+            } else {
+                break;
+            }
+        }
+        
+        return first.substring(0, prefixLen);
+    }
+
+    private void showCompletionDialog(List<String> completions, String prefix) {
+        if (!isAdded()) return;
+        
+        AlertDialog.Builder builder = new AlertDialog.Builder(requireContext());
+        builder.setTitle("Tab Completions (" + completions.size() + " options)");
+        
+        String[] items = completions.toArray(new String[0]);
+        builder.setItems(items, (dialog, which) -> {
+            if (inputEdit != null) {
+                String selected = items[which];
+                inputEdit.setText(prefix + selected + " ");
+                inputEdit.setSelection(inputEdit.getText().length());
+                inputEdit.requestFocus();
+            }
+        });
+        
+        builder.setNegativeButton("Cancel", null);
+        builder.show();
+    }
+
+    private boolean isShellReady() {
+        return (serviceBound && serviceSessionId > 0) || (ptyOut != null) || (writer != null);
+    }
 
     private void navigateHistory(int direction) {
         if (commandHistory.isEmpty() || inputEdit == null) return;
@@ -438,10 +738,14 @@ public class TerminalFragment extends Fragment implements MenuProvider {
                 outputThread = new Thread(() -> readStream(stdout, false), "term-out");
                 errorThread = new Thread(() -> readStream(stderr, true), "term-err");
                 outputThread.start(); errorThread.start();
-                String init = getEntryCmd() + "\n" +
-                        "TERM=xterm-256color CLICOLOR_FORCE=1 FORCE_COLOR=1 COLORTERM=truecolor\n" +
-                        "cd " + NhPaths.CHROOT_HOME + "\n";
+                
+                // Send entry command to enter chroot
+                String init = getEntryCmd() + "\n";
                 writer.write(init); writer.flush();
+                
+                // Wait for shell to be ready before sending init commands
+                handler.postDelayed(this::initializeShellEnvironment, 500);
+                
                 handler.post(this::updateCtrlButtonState);
             } catch (IOException e) { Log.e(TAG, "Failed to start terminal", e); }
         }).start();
@@ -469,7 +773,13 @@ public class TerminalFragment extends Fragment implements MenuProvider {
                 ptyIn = new FileInputStream(ptyPfd.getFileDescriptor());
                 ptyOut = new FileOutputStream(ptyPfd.getFileDescriptor());
                 ptyReadThread = new Thread(() -> readStream(ptyIn, false), "pty-reader"); ptyReadThread.start();
-                if (!USE_CHROOT_DIRECT) writePty("(stty -echo 2>/dev/null) >/dev/null 2>&1\n"); else writePty("\n");
+                
+                // Send a newline to trigger prompt
+                writePty("\n");
+                
+                // Wait for shell to be ready before sending init commands
+                handler.postDelayed(this::initializeShellEnvironment, 500);
+                
                 handler.post(this::updateCtrlButtonState);
                 scheduleInitialWindowSizeUpdate();
             } catch (Exception e) {
@@ -703,6 +1013,11 @@ public class TerminalFragment extends Fragment implements MenuProvider {
     @Override
     public void onCreateMenu(@NonNull Menu menu, @NonNull MenuInflater menuInflater) {
         menuInflater.inflate(R.menu.terminal_menu, menu);
+        
+        // Store fullscreen menu item reference
+        fullscreenMenuItem = menu.findItem(R.id.action_fullscreen);
+        updateFullscreenIcon();
+        
         MenuItem searchItem = menu.findItem(R.id.action_search);
         if (searchItem != null) {
             View actionView = searchItem.getActionView();
@@ -719,7 +1034,8 @@ public class TerminalFragment extends Fragment implements MenuProvider {
     @Override
     public boolean onMenuItemSelected(@NonNull MenuItem menuItem) {
         int id = menuItem.getItemId();
-        if (id == R.id.action_restart) { restartTerminal(); return true; }
+        if (id == R.id.action_fullscreen) { toggleFullscreen(); return true; }
+        else if (id == R.id.action_restart) { restartTerminal(); return true; }
         else if (id == R.id.action_print_dmesg) { printDmesg(); return true; }
         else if (id == R.id.action_search) { performSearch(); return true; }
         else if (id == R.id.action_save_output) { saveOutput(); return true; }
@@ -756,12 +1072,36 @@ public class TerminalFragment extends Fragment implements MenuProvider {
         List<CharSequence> lines = terminalAdapter.getLines(); StringBuilder sb = new StringBuilder();
         for (CharSequence line : lines) { sb.append(line).append("\n"); }
         try {
-            File nhFilesDir = new File(Environment.getExternalStorageDirectory(), "nh_files");
-            if (!nhFilesDir.exists()) { boolean created = nhFilesDir.mkdirs(); if (!created && !nhFilesDir.exists()) Log.w(TAG, "Failed to create directory: " + nhFilesDir.getAbsolutePath()); }
-            File outputFile = new File(nhFilesDir, "terminal_output.txt");
-            FileOutputStream fos = new FileOutputStream(outputFile); fos.write(sb.toString().getBytes(StandardCharsets.UTF_8)); fos.close();
+            // Use app-specific external storage (scoped storage compatible)
+            // This works on all Android versions and doesn't require storage permissions
+            File appFilesDir = requireContext().getExternalFilesDir(null);
+            if (appFilesDir == null) {
+                // Fallback to internal storage if external is unavailable
+                appFilesDir = requireContext().getFilesDir();
+            }
+            File nhFilesDir = new File(appFilesDir, "nh_files");
+            if (!nhFilesDir.exists()) { 
+                boolean created = nhFilesDir.mkdirs(); 
+                if (!created && !nhFilesDir.exists()) {
+                    Log.w(TAG, "Failed to create directory: " + nhFilesDir.getAbsolutePath());
+                    Toast.makeText(requireContext(), "Failed to create output directory", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+            }
+            
+            // Generate filename with timestamp to avoid overwriting
+            String timestamp = new java.text.SimpleDateFormat("yyyyMMdd_HHmmss", java.util.Locale.US).format(new java.util.Date());
+            File outputFile = new File(nhFilesDir, "terminal_output_" + timestamp + ".txt");
+            
+            FileOutputStream fos = new FileOutputStream(outputFile); 
+            fos.write(sb.toString().getBytes(StandardCharsets.UTF_8)); 
+            fos.close();
+            
             Toast.makeText(requireContext(), "Output saved to " + outputFile.getAbsolutePath(), Toast.LENGTH_LONG).show();
-        } catch (IOException e) { Toast.makeText(requireContext(), "Failed to save output: " + e.getMessage(), Toast.LENGTH_SHORT).show(); }
+        } catch (IOException e) { 
+            Log.e(TAG, "Failed to save output", e);
+            Toast.makeText(requireContext(), "Failed to save output: " + e.getMessage(), Toast.LENGTH_SHORT).show(); 
+        }
     }
 
     private void restartTerminal() { stopTerminal(); clearTerminal(); handler.postDelayed(this::startTerminal, 250); }
@@ -772,6 +1112,14 @@ public class TerminalFragment extends Fragment implements MenuProvider {
         if (!trimmed.isEmpty()) recordHistory(command);
         pendingCurrentLine = ""; inputEdit.setText(""); if (isClear) { clearTerminal(); }
         Log.d(TAG, "Sending command: " + command);
+        
+        // Echo the command locally to the terminal display
+        // This ensures the user sees what they typed, regardless of PTY echo settings
+        if (!command.isEmpty()) {
+            final String cmdToEcho = command + "\n";
+            ansiParserExecutor.execute(() -> appendAnsi(cmdToEcho, false));
+        }
+        
         if (serviceBound && serviceSessionId > 0) {
             boundService.send(serviceSessionId, command + "\n");
             return;
@@ -785,18 +1133,288 @@ public class TerminalFragment extends Fragment implements MenuProvider {
         }).start();
     }
 
+    private void toggleFullscreen() {
+        isFullscreen = !isFullscreen;
+        updateFullscreenIcon();
+        updateFullscreenFabIcon();
+
+        if (getActivity() instanceof AppCompatActivity) {
+            AppCompatActivity activity = (AppCompatActivity) getActivity();
+
+            if (isFullscreen) {
+                enterFullscreen(activity);
+
+                // Hide action bar
+                if (activity.getSupportActionBar() != null) {
+                    activity.getSupportActionBar().hide();
+                }
+
+                // Show fullscreen FAB (to allow exiting fullscreen)
+                if (fabFullscreen != null) {
+                    fabFullscreen.show();
+                }
+            } else {
+                exitFullscreen(activity);
+
+                // Show action bar
+                if (activity.getSupportActionBar() != null) {
+                    activity.getSupportActionBar().show();
+                }
+
+                // Hide fullscreen FAB (menu is available again)
+                if (fabFullscreen != null) {
+                    fabFullscreen.hide();
+                }
+            }
+        }
+    }
+
+    private void enterFullscreen(@NonNull AppCompatActivity activity) {
+        Window window = activity.getWindow();
+        View decorView = window.getDecorView();
+        WindowInsetsControllerCompat controller = WindowCompat.getInsetsController(window, decorView);
+        if (controller != null) {
+            controller.hide(WindowInsetsCompat.Type.statusBars() | WindowInsetsCompat.Type.navigationBars());
+            controller.setSystemBarsBehavior(WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);
+        }
+    }
+
+    private void exitFullscreen(@NonNull AppCompatActivity activity) {
+        Window window = activity.getWindow();
+        View decorView = window.getDecorView();
+        WindowInsetsControllerCompat controller = WindowCompat.getInsetsController(window, decorView);
+        if (controller != null) {
+            controller.show(WindowInsetsCompat.Type.statusBars() | WindowInsetsCompat.Type.navigationBars());
+            controller.setSystemBarsBehavior(WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);
+        }
+    }
+
+    private void updateFullscreenIcon() {
+        if (fullscreenMenuItem != null) {
+            if (isFullscreen) {
+                fullscreenMenuItem.setIcon(R.drawable.ic_fullscreen_exit);
+                fullscreenMenuItem.setTitle("Exit Fullscreen");
+            } else {
+                fullscreenMenuItem.setIcon(R.drawable.ic_fullscreen);
+                fullscreenMenuItem.setTitle("Fullscreen");
+            }
+        }
+    }
+
+    private void updateFullscreenFabIcon() {
+        if (fabFullscreen != null) {
+            if (isFullscreen) {
+                fabFullscreen.setImageResource(R.drawable.ic_fullscreen_exit);
+            } else {
+                fabFullscreen.setImageResource(R.drawable.ic_fullscreen);
+            }
+        }
+    }
+
+    private void makeFabDraggable(View fab) {
+        final float[] dX = {0};
+        final float[] dY = {0};
+        final int[] lastAction = {0};
+
+        fab.setOnTouchListener((view, event) -> {
+            switch (event.getActionMasked()) {
+                case android.view.MotionEvent.ACTION_DOWN:
+                    dX[0] = view.getX() - event.getRawX();
+                    dY[0] = view.getY() - event.getRawY();
+                    lastAction[0] = android.view.MotionEvent.ACTION_DOWN;
+                    break;
+
+                case android.view.MotionEvent.ACTION_MOVE:
+                    if (terminalRecycler != null) {
+                        // Get the terminal recycler bounds
+                        int[] recyclerLocation = new int[2];
+                        terminalRecycler.getLocationOnScreen(recyclerLocation);
+                        int recyclerLeft = recyclerLocation[0];
+                        int recyclerTop = recyclerLocation[1];
+                        int recyclerRight = recyclerLeft + terminalRecycler.getWidth();
+                        int recyclerBottom = recyclerTop + terminalRecycler.getHeight();
+
+                        // Calculate new position
+                        float newX = event.getRawX() + dX[0];
+                        float newY = event.getRawY() + dY[0];
+
+                        // Get FAB dimensions
+                        int fabWidth = view.getWidth();
+                        int fabHeight = view.getHeight();
+
+                        // Get FAB location to calculate screen position
+                        int[] fabLocation = new int[2];
+                        view.getLocationOnScreen(fabLocation);
+                        
+                        // Calculate the screen position of the FAB if we apply newX/newY
+                        // newX and newY are relative to parent, so we need to convert
+                        int[] parentLocation = new int[2];
+                        ((View) view.getParent()).getLocationOnScreen(parentLocation);
+                        float fabScreenX = parentLocation[0] + newX;
+                        float fabScreenY = parentLocation[1] + newY;
+
+                        // Constrain to terminal recycler bounds
+                        if (fabScreenX < recyclerLeft) {
+                            newX = newX + (recyclerLeft - fabScreenX);
+                        }
+                        if (fabScreenX + fabWidth > recyclerRight) {
+                            newX = newX - ((fabScreenX + fabWidth) - recyclerRight);
+                        }
+                        if (fabScreenY < recyclerTop) {
+                            newY = newY + (recyclerTop - fabScreenY);
+                        }
+                        if (fabScreenY + fabHeight > recyclerBottom) {
+                            newY = newY - ((fabScreenY + fabHeight) - recyclerBottom);
+                        }
+
+                        view.setX(newX);
+                        view.setY(newY);
+                    } else {
+                        // Fallback if recycler not available
+                        view.setX(event.getRawX() + dX[0]);
+                        view.setY(event.getRawY() + dY[0]);
+                    }
+                    lastAction[0] = android.view.MotionEvent.ACTION_MOVE;
+                    break;
+
+                case android.view.MotionEvent.ACTION_UP:
+                    // If it was just a tap (not a drag), trigger the click
+                    if (lastAction[0] == android.view.MotionEvent.ACTION_DOWN) {
+                        view.performClick();
+                    }
+                    break;
+
+                default:
+                    return false;
+            }
+            return true;
+        });
+    }
 
     @Override
     public void onDestroyView() {
-        super.onDestroyView(); requireActivity().removeMenuProvider(this);
+        super.onDestroyView(); 
+        requireActivity().removeMenuProvider(this);
+        
+        // Clean up all Handler callbacks to prevent memory leaks
+        handler.removeCallbacksAndMessages(null);
+        
+        // Cancel any pending tab completion (thread-safe)
+        synchronized (completionLock) {
+            waitingForCompletion = false;
+            if (completionThread != null && completionThread.isAlive()) {
+                completionThread.interrupt();
+            }
+        }
+        // Wait for thread to finish outside the lock to avoid deadlock
+        if (completionThread != null) {
+            try {
+                completionThread.join(200);
+            } catch (InterruptedException ignored) {
+                Thread.currentThread().interrupt();
+            }
+            completionThread = null;
+        }
+        
+        // Remove listeners to prevent memory leaks
+        if (inputEdit != null) {
+            inputEdit.setOnKeyListener(null);
+            inputEdit.removeTextChangedListener(null);
+        }
+        
+        if (terminalRecycler != null) {
+            terminalRecycler.clearOnScrollListeners();
+        }
+        
+        if (terminalAdapter != null) {
+            terminalAdapter.setSelectionListener(null);
+        }
+        
+        // Clear click listeners from FABs
+        if (fabGoBottom != null) {
+            fabGoBottom.setOnClickListener(null);
+        }
+        if (fabCopySelected != null) {
+            fabCopySelected.setOnClickListener(null);
+        }
+        if (fabFullscreen != null) {
+            fabFullscreen.setOnClickListener(null);
+            fabFullscreen.setOnTouchListener(null);
+        }
+        
+        if (ctrlButton != null) {
+            ctrlButton.setOnClickListener(null);
+        }
+        
         // Detach from service but do NOT stop sessions
         if (serviceBound) {
             try { if (boundService != null && serviceSessionId > 0) boundService.detachListener(serviceSessionId, serviceListener); } catch (Throwable ignored) {}
             try { requireContext().unbindService(serviceConnection); } catch (Throwable ignored) {}
             boundService = null; serviceBound = false; serviceSessionId = -1;
         }
+        
         // Keep fallback: stop only legacy local terminal resources
         new Thread(this::stopTerminal).start();
+        
+        // Flush any pending UI updates immediately
+        synchronized (pendingLinesLock) {
+            if (pendingFlushRunnable != null) {
+                handler.removeCallbacks(pendingFlushRunnable);
+                // Flush immediately
+                if (!pendingLinesToAdd.isEmpty() && terminalAdapter != null && terminalRecycler != null) {
+                    terminalAdapter.addLines(new ArrayList<>(pendingLinesToAdd), terminalRecycler);
+                    pendingLinesToAdd.clear();
+                }
+                pendingFlushRunnable = null;
+            }
+        }
+        
+        // Shutdown ANSI parser executor
+        ansiParserExecutor.shutdown();
+        try {
+            if (!ansiParserExecutor.awaitTermination(1, java.util.concurrent.TimeUnit.SECONDS)) {
+                ansiParserExecutor.shutdownNow();
+            }
+        } catch (InterruptedException e) {
+            ansiParserExecutor.shutdownNow();
+            Thread.currentThread().interrupt();
+        }
+        
+        // Clear command history to free memory
+        commandHistory.clear();
+        historyIndex = -1;
+        pendingCurrentLine = "";
+        
+        // Clear persistent lines buffer
+        persistentLines.clear();
+        
+        // Clear pending UI updates
+        synchronized (pendingLinesLock) {
+            pendingLinesToAdd.clear();
+        }
+        
+        // Clear ANSI state
+        ansiCarry = "";
+        currentLine = new SpannableStringBuilder();
+        currentLineSegmentStart = 0;
+        cursorColumn = 0;
+        
+        // Reset formatting state
+        currentBold = false;
+        currentUnderline = false;
+        currentFgColor = defaultFgColor;
+        currentBgColor = defaultBgColor;
+        
+        // Clear references to views to prevent memory leaks
+        inputEdit = null;
+        terminalRecycler = null;
+        terminalAdapter = null;
+        ctrlButton = null;
+        fabGoBottom = null;
+        fabCopySelected = null;
+        fabFullscreen = null;
+        fullscreenMenuItem = null;
+        scaleDetector = null;
     }
 
     private volatile boolean shuttingDown = false;
@@ -808,21 +1426,94 @@ public class TerminalFragment extends Fragment implements MenuProvider {
     }
 
     private void stopProcessShell() {
-        try { if (writer != null) { try { writer.write("exit\n"); writer.flush(); } catch (IOException e) { Log.e(TAG, "Error while writing exit command", e); } } }
-        finally {
-            if (process != null) { process.destroy(); try { process.waitFor(); } catch (InterruptedException ignored) { Thread.currentThread().interrupt(); } }
-            writer = null; outputStream = null; outputThread = null; errorThread = null;
+        try { 
+            if (writer != null) { 
+                try { 
+                    writer.write("exit\n"); 
+                    writer.flush(); 
+                } catch (IOException e) { 
+                    Log.e(TAG, "Error while writing exit command", e); 
+                } 
+            } 
+        } finally {
+            // Interrupt and wait for threads to finish
+            if (outputThread != null && outputThread.isAlive()) {
+                outputThread.interrupt();
+                try { outputThread.join(500); } catch (InterruptedException ignored) { Thread.currentThread().interrupt(); }
+            }
+            if (errorThread != null && errorThread.isAlive()) {
+                errorThread.interrupt();
+                try { errorThread.join(500); } catch (InterruptedException ignored) { Thread.currentThread().interrupt(); }
+            }
+            
+            // Close streams
+            try { if (writer != null) writer.close(); } catch (IOException ignored) {}
+            try { if (outputStream != null) outputStream.close(); } catch (IOException ignored) {}
+            
+            // Destroy process
+            if (process != null) { 
+                process.destroy(); 
+                try { 
+                    process.waitFor(); 
+                } catch (InterruptedException ignored) { 
+                    Thread.currentThread().interrupt(); 
+                } 
+            }
+            
+            // Clear references
+            writer = null; 
+            outputStream = null; 
+            outputThread = null; 
+            errorThread = null;
+            process = null;
         }
     }
 
     private void stopPty() {
-        try { if (ptyOut != null) { try { writePty("exit\n"); } catch (IOException ignored) {} } }
-        finally {
-            if (ptyOut != null) { try { ptyOut.close(); } catch (IOException ignored) {} }
-            if (ptyPfd != null) { try { ptyPfd.close(); } catch (IOException ignored) {} }
-            if (ptyReadThread != null) { try { ptyReadThread.join(200); } catch (InterruptedException ignored) { Thread.currentThread().interrupt(); } if (ptyReadThread.isAlive()) ptyReadThread.interrupt(); }
-            if (ptyPid > 0) { PtyNative.killChild(ptyPid, 9); }
-            ptyFd = -1; ptyPid = -1; ptyIn = null; ptyOut = null; ptyReadThread = null;
+        try { 
+            if (ptyOut != null) { 
+                try { 
+                    writePty("exit\n"); 
+                } catch (IOException ignored) {} 
+            } 
+        } finally {
+            // Interrupt thread first, then wait
+            if (ptyReadThread != null && ptyReadThread.isAlive()) {
+                ptyReadThread.interrupt();
+                try { 
+                    ptyReadThread.join(500); 
+                } catch (InterruptedException ignored) { 
+                    Thread.currentThread().interrupt(); 
+                }
+                // Force interrupt if still alive
+                if (ptyReadThread.isAlive()) {
+                    Log.w(TAG, "PTY read thread did not terminate gracefully");
+                }
+            }
+            
+            // Close streams
+            if (ptyIn != null) { 
+                try { ptyIn.close(); } catch (IOException ignored) {} 
+            }
+            if (ptyOut != null) { 
+                try { ptyOut.close(); } catch (IOException ignored) {} 
+            }
+            if (ptyPfd != null) { 
+                try { ptyPfd.close(); } catch (IOException ignored) {} 
+            }
+            
+            // Kill child process
+            if (ptyPid > 0) { 
+                PtyNative.killChild(ptyPid, 9); 
+            }
+            
+            // Clear references
+            ptyFd = -1; 
+            ptyPid = -1; 
+            ptyIn = null; 
+            ptyOut = null; 
+            ptyReadThread = null;
+            ptyPfd = null;
         }
     }
 
@@ -903,6 +1594,159 @@ public class TerminalFragment extends Fragment implements MenuProvider {
         return candidates;
     }
 
+    /**
+     * Build a clean PS1 prompt string based on shell type and user preferences.
+     * Returns the appropriate PS1 format for bash, zsh, or sh shells.
+     * 
+     * @param shellPath The resolved shell path (e.g., "/bin/bash", "/bin/zsh")
+     * @return PS1 format string appropriate for the shell type
+     */
+    private String buildCleanPS1(String shellPath) {
+        if (shellPath == null) shellPath = "/bin/bash";
+        
+        // Get user's PS1 style preference
+        SharedPreferences prefs = requireContext().getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        String style = prefs.getString(KEY_PS1_STYLE, "standard");
+        String customPs1 = prefs.getString(KEY_PS1_CUSTOM, "");
+        
+        // If custom PS1 is provided, use it directly
+        if ("custom".equalsIgnoreCase(style) && !customPs1.trim().isEmpty()) {
+            return customPs1.trim();
+        }
+        
+        // Select preset based on style preference
+        PS1Preset preset;
+        switch (style.toLowerCase()) {
+            case "minimal":
+                preset = PS1Preset.MINIMAL;
+                break;
+            case "full":
+                preset = PS1Preset.FULL;
+                break;
+            case "standard":
+            default:
+                preset = PS1Preset.STANDARD;
+                break;
+        }
+        
+        // Return appropriate format based on shell type
+        if (shellPath.endsWith("zsh")) {
+            return preset.zshFormat;
+        } else if (shellPath.endsWith("bash")) {
+            return preset.bashFormat;
+        } else {
+            // For sh and other shells, use simple format
+            return preset.shFormat;
+        }
+    }
+
+    /**
+     * Generate shell-specific PS1 export command.
+     * Creates the appropriate export statement to set the PS1 prompt.
+     * 
+     * @param shellPath The resolved shell path
+     * @return Shell command to export PS1 variable
+     */
+    private String getPS1InitCommand(String shellPath) {
+        String ps1Format = buildCleanPS1(shellPath);
+        
+        // For bash and sh, use export command
+        if (shellPath.endsWith("bash") || shellPath.endsWith("sh")) {
+            return "export " + ps1Format;
+        }
+        // For zsh, also use export (works in zsh)
+        else if (shellPath.endsWith("zsh")) {
+            return "export " + ps1Format;
+        }
+        
+        // Fallback: generic export
+        return "export " + ps1Format;
+    }
+
+    /**
+     * Initialize shell environment with proper settings.
+     * Sends initialization commands to set up TERM, COLORTERM, LANG, LC_ALL, and PS1.
+     * This method should be called after the shell/PTY is created and ready.
+     * <p>
+     * Requirements: 4.1, 4.2, 4.3, 4.4, 2.5
+     */
+    private void initializeShellEnvironment() {
+        // Check if auto-PS1 is enabled
+        SharedPreferences prefs = requireContext().getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        boolean autoPs1Enabled = prefs.getBoolean(KEY_AUTO_PS1_ENABLED, true);
+        
+        String shellPath = resolvePreferredShell();
+        StringBuilder init = new StringBuilder();
+        
+        // Disable terminal echo in PTY mode to prevent command duplication
+        // We handle echo locally in the app
+        if (USE_PTY) {
+            init.append("stty -echo 2>/dev/null\n");
+        }
+        
+        // Set terminal environment variables for proper ANSI support
+        init.append("export TERM=xterm-256color\n");
+        init.append("export COLORTERM=truecolor\n");
+        init.append("export CLICOLOR_FORCE=1\n");
+        init.append("export FORCE_COLOR=1\n");
+        
+        // Set locale variables for proper character encoding
+        init.append("export LANG=en_US.UTF-8\n");
+        init.append("export LC_ALL=C\n");
+        
+        // Set PS1 prompt if auto-PS1 is enabled
+        if (autoPs1Enabled) {
+            String ps1Cmd = getPS1InitCommand(shellPath);
+            init.append(ps1Cmd).append("\n");
+        }
+        
+        // Change to home directory (fallback to current if /root doesn't exist)
+        init.append("cd /root 2>/dev/null || cd ~ 2>/dev/null || true\n");
+        
+        // Clear screen for clean start
+        init.append("clear\n");
+        
+        // Send initialization commands
+        sendInitCommands(init.toString());
+    }
+
+    /**
+     * Send initialization commands to the shell.
+     * Handles both service-based and legacy shell modes.
+     * 
+     * @param commands The initialization command string to send
+     */
+    private void sendInitCommands(String commands) {
+        if (commands == null || commands.isEmpty()) {
+            return;
+        }
+        
+        // Use service-based session if available
+        if (serviceBound && serviceSessionId > 0 && boundService != null) {
+            boundService.send(serviceSessionId, commands);
+            Log.d(TAG, "Sent init commands via service");
+            return;
+        }
+        
+        // Fallback to legacy mode
+        new Thread(() -> {
+            try {
+                if (ptyOut != null) {
+                    writePty(commands);
+                    Log.d(TAG, "Sent init commands via PTY");
+                } else if (writer != null) {
+                    writer.write(commands);
+                    writer.flush();
+                    Log.d(TAG, "Sent init commands via process writer");
+                } else {
+                    Log.w(TAG, "Shell not ready for init commands");
+                }
+            } catch (IOException e) {
+                Log.e(TAG, "Failed to send init commands", e);
+            }
+        }).start();
+    }
+
     @Override public void onResume() { super.onResume(); setActionBarTitleToTerminal(); }
 
     private void setActionBarTitleToTerminal() {
@@ -927,18 +1771,42 @@ public class TerminalFragment extends Fragment implements MenuProvider {
             byte[] buf = new byte[4096]; int n;
             while ((n = is.read(buf)) != -1) {
                 final String chunk = new String(buf, 0, n, StandardCharsets.UTF_8);
-                handler.post(() -> { if (!isAdded()) return; appendAnsi(chunk, isErr); });
+                // Parse ANSI on background thread, then post results to main thread
+                ansiParserExecutor.execute(() -> {
+                    if (!isAdded()) return;
+                    appendAnsi(chunk, isErr);
+                });
             }
         } catch (InterruptedIOException e) { if (!shuttingDown) Log.w(TAG, "Stream read interrupted", e); }
         catch (IOException e) { if (!shuttingDown) Log.e(TAG, "Error reading stream", e); }
     }
 
-    private static synchronized void writePty(String data) throws IOException {
+    private synchronized void writePty(String data) throws IOException {
         if (ptyOut != null) { byte[] b = data.getBytes(StandardCharsets.UTF_8); ptyOut.write(b); ptyOut.flush(); }
     }
 
-    private void appendAnsi(String raw, boolean isErr) {
-        if (raw.isEmpty()) return; String text = ansiCarry + raw; ansiCarry = ""; int i = 0; int len = text.length();
+    private void flushPendingUIUpdates() {
+        synchronized (pendingLinesLock) {
+            if (pendingFlushRunnable != null) {
+                handler.removeCallbacks(pendingFlushRunnable);
+                pendingFlushRunnable.run();
+            }
+        }
+    }
+    
+    private synchronized void appendAnsi(String raw, boolean isErr) {
+        if (raw.isEmpty()) return; 
+        
+        // Capture output for tab completion (thread-safe)
+        if (waitingForCompletion) {
+            synchronized (completionLock) {
+                completionOutput += raw;
+            }
+        }
+
+        List<CharSequence> batchedLines = new ArrayList<>();
+        
+        String text = ansiCarry + raw; ansiCarry = ""; int i = 0; int len = text.length();
         while (i < len) {
             char c = text.charAt(i);
             if (c == '\u001B') {
@@ -948,27 +1816,162 @@ public class TerminalFragment extends Fragment implements MenuProvider {
                 int seqEnd = -1; for (int j = i + 2; j < len; j++) { char ch = text.charAt(j); if ((ch >= 'A' && ch <= 'Z') || (ch >= 'a' && ch <= 'z')) { seqEnd = j; break; } }
                 if (seqEnd == -1) { ansiCarry = text.substring(i); break; }
                 char finalByte = text.charAt(seqEnd); String inside = text.substring(i + 2, seqEnd); i = seqEnd + 1;
-                if (finalByte == 'm') { parseAndApplySgrSequence(inside); }
+                if (finalByte == 'm') { 
+                    parseAndApplySgrSequence(inside); 
+                } else {
+                    // Handle cursor control sequences (G, K, H, J, etc.)
+                    parseCursorControlSequence(inside, finalByte);
+                }
                 currentLineSegmentStart = currentLine.length();
             } else if (c == '\n' || c == '\r') {
-                char next = (i + 1 < len) ? text.charAt(i + 1) : 0; applyCurrentStyle(currentLine, currentLineSegmentStart);
-                if (isErr) {
-                    SpannableStringBuilder errPrefix = new SpannableStringBuilder("[err] ");
-                    errPrefix.setSpan(new ForegroundColorSpan(0xFFFF5555), 0, errPrefix.length(), Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
-                    errPrefix.append(currentLine);
-                    terminalAdapter.addLine(errPrefix, terminalRecycler);
-                    persistentLines.add(errPrefix);
+                char next = (i + 1 < len) ? text.charAt(i + 1) : 0; 
+                applyCurrentStyle(currentLine, currentLineSegmentStart);
+                
+                // Handle carriage return without newline (prompt overwrites)
+                if (c == '\r' && next != '\n') {
+                    // Carriage return alone - just skip it for now
+                    // Don't reset cursor or clear line - this preserves prompts
+                    // True dynamic updates should use cursor control sequences
+                    i++;
+                } else if (c == '\r' && next == '\n') {
+                    // CRLF - treat as newline
+                    // Check if this is a prompt line and reset formatting if so
+                    boolean isPrompt = isPromptLine(currentLine);
+                    
+                    if (isErr) {
+                        SpannableStringBuilder errPrefix = new SpannableStringBuilder("[err] ");
+                        errPrefix.setSpan(new ForegroundColorSpan(0xFFFF5555), 0, errPrefix.length(), Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+                        errPrefix.append(currentLine);
+                        batchedLines.add(errPrefix);
+                        persistentLines.add(errPrefix);
+                    } else {
+                        CharSequence line = new SpannableStringBuilder(currentLine);
+                        batchedLines.add(line);
+                        persistentLines.add(line);
+                    }
+                    if (persistentLines.size() > PERSISTENT_BUFFER_SIZE) persistentLines.remove(0);
+                    
+                    // Reset formatting state if this was a prompt line
+                    if (isPrompt) {
+                        resetAllSgr();
+                    }
+                    
+                    currentLine = new SpannableStringBuilder(); 
+                    currentLineSegmentStart = 0;
+                    cursorColumn = 0;
+                    i += 2;
+                } else if (c == '\n') {
+                    // LF alone - treat as newline
+                    // Check if this is a prompt line and reset formatting if so
+                    boolean isPrompt = isPromptLine(currentLine);
+                    
+                    if (isErr) {
+                        SpannableStringBuilder errPrefix = new SpannableStringBuilder("[err] ");
+                        errPrefix.setSpan(new ForegroundColorSpan(0xFFFF5555), 0, errPrefix.length(), Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+                        errPrefix.append(currentLine);
+                        batchedLines.add(errPrefix);
+                        persistentLines.add(errPrefix);
+                    } else {
+                        CharSequence line = new SpannableStringBuilder(currentLine);
+                        batchedLines.add(line);
+                        persistentLines.add(line);
+                    }
+                    if (persistentLines.size() > PERSISTENT_BUFFER_SIZE) persistentLines.remove(0);
+                    
+                    // Reset formatting state if this was a prompt line
+                    if (isPrompt) {
+                        resetAllSgr();
+                    }
+                    
+                    currentLine = new SpannableStringBuilder(); 
+                    currentLineSegmentStart = 0;
+                    cursorColumn = 0;
+                    i++;
+                } else {
+                    i++;
                 }
-                else {
-                    CharSequence line = new SpannableStringBuilder(currentLine);
-                    terminalAdapter.addLine(line, terminalRecycler);
-                    persistentLines.add(line);
-                }
-                if (persistentLines.size() > PERSISTENT_BUFFER_SIZE) persistentLines.remove(0);
-                currentLine = new SpannableStringBuilder(); currentLineSegmentStart = 0;
-                if (c == '\r' && next == '\n') { i += 2; } else { i++; }
-            } else { currentLine.append(c); i++; }
+            } else { 
+                // Append character to current line
+                currentLine.append(c);
+                cursorColumn++; 
+                i++; 
+            }
         }
+        
+        // Submit all lines with debouncing for better performance during rapid updates
+        if (!batchedLines.isEmpty()) {
+            synchronized (pendingLinesLock) {
+                pendingLinesToAdd.addAll(batchedLines);
+                
+                // Cancel any pending flush
+                if (pendingFlushRunnable != null) {
+                    handler.removeCallbacks(pendingFlushRunnable);
+                }
+                
+                // Schedule a new flush after debounce delay
+                pendingFlushRunnable = () -> {
+                    List<CharSequence> linesToFlush;
+                    synchronized (pendingLinesLock) {
+                        if (pendingLinesToAdd.isEmpty()) return;
+                        linesToFlush = new ArrayList<>(pendingLinesToAdd);
+                        pendingLinesToAdd.clear();
+                        pendingFlushRunnable = null;
+                    }
+                    
+                    // Post to main thread since RecyclerView updates must happen on main thread
+                    if (terminalAdapter != null && terminalRecycler != null) {
+                        terminalAdapter.addLines(linesToFlush, terminalRecycler);
+                    }
+                };
+                
+                handler.postDelayed(pendingFlushRunnable, UI_UPDATE_DEBOUNCE_MS);
+            }
+        }
+    }
+
+    private boolean isPromptLine(CharSequence line) {
+        if (line == null || line.length() == 0) {
+            return false;
+        }
+        
+        // Strip ANSI escape sequences to get plain text
+        String plainText = stripAnsiCodes(line.toString()).trim();
+        
+        if (plainText.isEmpty()) {
+            return false;
+        }
+        
+        // Common prompt patterns:
+        // - Ends with "$ " or "# " (bash/sh prompts)
+        // - Ends with "$" or "#" (minimal prompts)
+        // - Ends with "% " (zsh prompts)
+        // - Contains user@host pattern followed by $ or #
+        
+        // Check for trailing prompt symbols
+        if (plainText.endsWith("$ ") || plainText.endsWith("# ") || plainText.endsWith("% ")) {
+            return true;
+        }
+        
+        if (plainText.endsWith("$") || plainText.endsWith("#") || plainText.endsWith("%")) {
+            return true;
+        }
+        
+        // Check for user@host:path$ pattern
+        return plainText.matches(".*[@:].*[$#%]\\s*$");
+    }
+
+    private String stripAnsiCodes(String text) {
+        if (text == null || text.isEmpty()) {
+            return "";
+        }
+        
+        // Remove CSI sequences: ESC [ ... letter
+        String result = text.replaceAll("\u001B\\[[0-9;]*[a-zA-Z]", "");
+        
+        // Remove other ESC sequences
+        result = result.replaceAll("\u001B[^\\[]*", "");
+        
+        return result;
     }
 
     private void applyCurrentStyle(SpannableStringBuilder sb, int start) {
@@ -1035,10 +2038,6 @@ public class TerminalFragment extends Fragment implements MenuProvider {
         return defaultFgColor;
     }
 
-    /**
-     * Parse and execute cursor control ANSI sequences.
-     * Handles CSI sequences with final bytes: G (cursor column), K (erase line), H (cursor home), J (clear screen)
-     */
     private void parseCursorControlSequence(String params, char finalByte) {
         try {
             switch (finalByte) {
@@ -1053,22 +2052,77 @@ public class TerminalFragment extends Fragment implements MenuProvider {
                     eraseInLine(mode);
                     break;
                     
-                case 'H': // CSI H or CSI n;m H - Cursor home (we only handle home position)
-                    // For simplicity, just reset cursor to column 0
+                case 'H': // CSI H or CSI n;m H - Cursor home
+                case 'f': // CSI n;m f - Cursor position (same as H)
+                    // For single-line terminal, just reset cursor to column 0
                     setCursorColumn(0);
                     break;
                     
                 case 'J': // CSI n J - Erase in display
                     int clearMode = params.isEmpty() ? 0 : parseIntSafe(params);
-                    if (clearMode == 2) {
+                    if (clearMode == 2 || clearMode == 3) {
                         // CSI 2J - Clear entire screen
+                        // CSI 3J - Clear entire screen and scrollback
                         handler.post(this::clearTerminal);
+                    } else if (clearMode == 0) {
+                        // CSI 0J - Clear from cursor to end of screen
+                        // For single-line terminal, clear current line from cursor
+                        eraseInLine(0);
+                    } else if (clearMode == 1) {
+                        // CSI 1J - Clear from cursor to beginning of screen
+                        // For single-line terminal, clear current line to cursor
+                        eraseInLine(1);
                     }
                     break;
                     
+                case 'A': // CSI n A - Cursor up n lines (ignore in single-line mode)
+                case 'B': // CSI n B - Cursor down n lines (ignore in single-line mode)
+                case 'E': // CSI n E - Cursor next line (ignore in single-line mode)
+                case 'F': // CSI n F - Cursor previous line (ignore in single-line mode)
+                    // These don't apply to our single-line buffer model, safely ignore
+                    break;
+                    
+                case 'C': // CSI n C - Cursor forward n columns
+                    int forward = params.isEmpty() ? 1 : parseIntSafe(params);
+                    if (forward < 1) forward = 1;
+                    setCursorColumn(cursorColumn + forward);
+                    break;
+                    
+                case 'D': // CSI n D - Cursor back n columns
+                    int back = params.isEmpty() ? 1 : parseIntSafe(params);
+                    if (back < 1) back = 1;
+                    setCursorColumn(cursorColumn - back);
+                    break;
+                    
+                case 's': // CSI s - Save cursor position (simplified: just note current position)
+                    // In a full terminal emulator, we'd save position; here we just acknowledge it
+                    break;
+                    
+                case 'u': // CSI u - Restore cursor position (simplified: reset to start)
+                    // In a full terminal emulator, we'd restore saved position; here we reset
+                    setCursorColumn(0);
+                    break;
+                    
+                case 'X': // CSI n X - Erase n characters from cursor position
+                    int count = params.isEmpty() ? 1 : parseIntSafe(params);
+                    if (count < 1) count = 1;
+                    eraseCharacters(count);
+                    break;
+                    
+                case 'P': // CSI n P - Delete n characters
+                    int delCount = params.isEmpty() ? 1 : parseIntSafe(params);
+                    if (delCount < 1) delCount = 1;
+                    deleteCharacters(delCount);
+                    break;
+                    
+                case 'L': // CSI n L - Insert n lines (not applicable in single-line mode)
+                case 'M': // CSI n M - Delete n lines (not applicable in single-line mode)
+                    // These don't apply to our single-line buffer model, safely ignore
+                    break;
+                    
                 default:
-                    // Ignore unknown cursor control sequences
-                    Log.d(TAG, "Unknown cursor control sequence: CSI " + params + finalByte);
+                    // Silently ignore unknown cursor control sequences to avoid log spam
+                    // Uncomment for debugging: Log.d(TAG, "Unknown cursor control: CSI " + params + finalByte);
                     break;
             }
         } catch (Exception e) {
@@ -1076,20 +2130,10 @@ public class TerminalFragment extends Fragment implements MenuProvider {
         }
     }
 
-    /**
-     * Set cursor column position with bounds checking.
-     * Clamps position to valid range [0, currentLine.length()]
-     */
     private void setCursorColumn(int col) {
         cursorColumn = Math.max(0, Math.min(col, currentLine.length()));
     }
 
-    /**
-     * Erase content in the current line based on mode.
-     * Mode 0: erase from cursor to end of line
-     * Mode 1: erase from start of line to cursor
-     * Mode 2: erase entire line
-     */
     private void eraseInLine(int mode) {
         int len = currentLine.length();
         if (len == 0) return;
@@ -1126,6 +2170,34 @@ public class TerminalFragment extends Fragment implements MenuProvider {
             }
         } catch (Exception e) {
             Log.d(TAG, "Error erasing line, mode=" + mode, e);
+        }
+    }
+
+    private void eraseCharacters(int count) {
+        int len = currentLine.length();
+        if (len == 0 || cursorColumn >= len) return;
+        
+        try {
+            int endPos = Math.min(cursorColumn + count, len);
+            if (endPos > cursorColumn) {
+                currentLine.delete(cursorColumn, endPos);
+            }
+        } catch (Exception e) {
+            Log.d(TAG, "Error erasing characters, count=" + count, e);
+        }
+    }
+
+    private void deleteCharacters(int count) {
+        int len = currentLine.length();
+        if (len == 0 || cursorColumn >= len) return;
+        
+        try {
+            int endPos = Math.min(cursorColumn + count, len);
+            if (endPos > cursorColumn) {
+                currentLine.delete(cursorColumn, endPos);
+            }
+        } catch (Exception e) {
+            Log.d(TAG, "Error deleting characters, count=" + count, e);
         }
     }
 
@@ -1280,7 +2352,11 @@ public class TerminalFragment extends Fragment implements MenuProvider {
 
     private final TerminalService.TerminalListener serviceListener = new TerminalService.TerminalListener() {
         @Override public void onOutput(int sessionId, @NonNull TerminalService.TerminalEvent event) {
-            handler.post(() -> { if (!isAdded()) return; appendAnsi(event.data, event.isErr); });
+            // Parse ANSI on background thread
+            ansiParserExecutor.execute(() -> {
+                if (!isAdded()) return;
+                appendAnsi(event.data, event.isErr);
+            });
         }
         @Override public void onSessionClosed(int sessionId, int exitCode) { /* optionally notify */ }
     };
@@ -1297,7 +2373,12 @@ public class TerminalFragment extends Fragment implements MenuProvider {
             // Replay buffered output to reconstruct UI
             List<TerminalService.TerminalEvent> snapshot = boundService.getBufferSnapshot(serviceSessionId);
             if (snapshot != null && !snapshot.isEmpty()) {
-                for (TerminalService.TerminalEvent ev : snapshot) { appendAnsi(ev.data, ev.isErr); }
+                // Process snapshot on background thread
+                ansiParserExecutor.execute(() -> {
+                    for (TerminalService.TerminalEvent ev : snapshot) {
+                        appendAnsi(ev.data, ev.isErr);
+                    }
+                });
             }
             updateCtrlButtonState();
             terminalRecycler.post(TerminalFragment.this::updatePtyWindowSize);

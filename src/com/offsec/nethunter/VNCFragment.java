@@ -884,6 +884,7 @@ public class VNCFragment extends Fragment {
             if (getView() == null)
                 return;
             Intent intent = context.getPackageManager().getLaunchIntentForPackage("com.offsec.nethunter.kex");
+            assert intent != null;
             startActivity(intent);
         } catch (Exception e) {
             Log.d("errorLaunching", e.toString());

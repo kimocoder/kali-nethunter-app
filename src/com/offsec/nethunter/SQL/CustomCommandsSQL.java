@@ -1,11 +1,11 @@
 package com.offsec.nethunter.SQL;
 
 import android.content.ContentValues;
+import android.os.Environment;
 import android.content.Context;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
-import android.os.Environment;
 import android.text.TextUtils;
 import android.util.Log;
 
@@ -121,100 +121,103 @@ public class CustomCommandsSQL extends SQLiteOpenHelper {
     }
 
     public void addData(int targetPositionId, @NonNull List<String> data) {
-        SQLiteDatabase db = this.getWritableDatabase();
-        ContentValues values = new ContentValues();
-        db.execSQL("UPDATE " + TABLE_NAME + " SET " + COLUMNS.get(0) + " = " + COLUMNS.get(0) + " + 1 WHERE " + COLUMNS.get(0) + " >= " + targetPositionId + ";");
-        values.put(COLUMNS.get(0), targetPositionId);
-        values.put(COLUMNS.get(1), data.get(0));
-        values.put(COLUMNS.get(2), data.get(1));
-        values.put(COLUMNS.get(3), data.get(2));
-        values.put(COLUMNS.get(4), data.get(3));
-        values.put(COLUMNS.get(5), data.get(4));
-        db.beginTransaction();
-        db.insert(TABLE_NAME, null, values);
-        db.setTransactionSuccessful();
-        db.endTransaction();
-        db.close();
+        try (SQLiteDatabase db = this.getWritableDatabase()) {
+            ContentValues values = new ContentValues();
+            db.execSQL("UPDATE " + TABLE_NAME + " SET " + COLUMNS.get(0) + " = " + COLUMNS.get(0) + " + 1 WHERE " + COLUMNS.get(0) + " >= " + targetPositionId + ";");
+            values.put(COLUMNS.get(0), targetPositionId);
+            values.put(COLUMNS.get(1), data.get(0));
+            values.put(COLUMNS.get(2), data.get(1));
+            values.put(COLUMNS.get(3), data.get(2));
+            values.put(COLUMNS.get(4), data.get(3));
+            values.put(COLUMNS.get(5), data.get(4));
+            db.beginTransaction();
+            try {
+                db.insert(TABLE_NAME, null, values);
+                db.setTransactionSuccessful();
+            } finally {
+                db.endTransaction();
+            }
+        }
     }
 
     public void deleteData(List<Integer> ids){
-        SQLiteDatabase db = this.getWritableDatabase();
-        db.execSQL("DELETE FROM " + TABLE_NAME + " WHERE " + COLUMNS.get(0) + " in (" + TextUtils.join(",", ids) + ");");
-        try (Cursor cursor = db.rawQuery("SELECT * FROM " + TABLE_NAME + " ORDER BY " + COLUMNS.get(0) + ";", null)) {
-            while (cursor.moveToNext()) {
-                int i = cursor.getColumnIndex(COLUMNS.get(0));
-                if (i >= 0) {
-                    db.execSQL("UPDATE " + TABLE_NAME + " SET " + COLUMNS.get(0) + " = " + cursor.getInt(i) + " WHERE " + COLUMNS.get(0) + " > " + cursor.getInt(i) + ";");
+        try (SQLiteDatabase db = this.getWritableDatabase()) {
+            db.execSQL("DELETE FROM " + TABLE_NAME + " WHERE " + COLUMNS.get(0) + " in (" + TextUtils.join(",", ids) + ");");
+            try (Cursor cursor = db.rawQuery("SELECT * FROM " + TABLE_NAME + " ORDER BY " + COLUMNS.get(0) + ";", null)) {
+                while (cursor.moveToNext()) {
+                    int i = cursor.getColumnIndex(COLUMNS.get(0));
+                    if (i >= 0) {
+                        db.execSQL("UPDATE " + TABLE_NAME + " SET " + COLUMNS.get(0) + " = " + cursor.getInt(i) + " WHERE " + COLUMNS.get(0) + " > " + cursor.getInt(i) + ";");
+                    }
                 }
             }
         }
-        db.close();
     }
 
     public void moveData(Integer originalPosition, Integer targetPosition){
-        SQLiteDatabase db = this.getWritableDatabase();
-        db.execSQL("UPDATE " + TABLE_NAME + " SET " + COLUMNS.get(0) + " = 0 - 1 WHERE " + COLUMNS.get(0) + " = " + (originalPosition + 1) + ";");
-        if (originalPosition < targetPosition){
-            db.execSQL("UPDATE " + TABLE_NAME + " SET " + COLUMNS.get(0) + " = " + COLUMNS.get(0) + " - 1 WHERE " + COLUMNS.get(0) + " > " + originalPosition + " AND " + COLUMNS.get(0) + " <= " + targetPosition + ";");
-        } else {
-            db.execSQL("UPDATE " + TABLE_NAME + " SET " + COLUMNS.get(0) + " = " + COLUMNS.get(0) + " + 1 WHERE " + COLUMNS.get(0) + " < " + originalPosition + " AND " + COLUMNS.get(0) + " >= " + targetPosition + ";");
+        try (SQLiteDatabase db = this.getWritableDatabase()) {
+            db.execSQL("UPDATE " + TABLE_NAME + " SET " + COLUMNS.get(0) + " = 0 - 1 WHERE " + COLUMNS.get(0) + " = " + (originalPosition + 1) + ";");
+            if (originalPosition < targetPosition){
+                db.execSQL("UPDATE " + TABLE_NAME + " SET " + COLUMNS.get(0) + " = " + COLUMNS.get(0) + " - 1 WHERE " + COLUMNS.get(0) + " > " + originalPosition + " AND " + COLUMNS.get(0) + " <= " + targetPosition + ";");
+            } else {
+                db.execSQL("UPDATE " + TABLE_NAME + " SET " + COLUMNS.get(0) + " = " + COLUMNS.get(0) + " + 1 WHERE " + COLUMNS.get(0) + " < " + originalPosition + " AND " + COLUMNS.get(0) + " >= " + targetPosition + ";");
+            }
+            db.execSQL("UPDATE " + TABLE_NAME + " SET " + COLUMNS.get(0) + " = " + (targetPosition + 1) + " WHERE " + COLUMNS.get(0) + " = -1;");
         }
-        db.execSQL("UPDATE " + TABLE_NAME + " SET " + COLUMNS.get(0) + " = " + (targetPosition + 1) + " WHERE " + COLUMNS.get(0) + " = -1;");
-        db.close();
     }
 
     public void editData(Integer targetPosition, List<String> editData){
-        SQLiteDatabase db = this.getWritableDatabase();
-        db.execSQL("UPDATE " + TABLE_NAME + " SET " + COLUMNS.get(1) + " = '" + editData.get(0).replace("'", "''") + "', " +
-                COLUMNS.get(2) + " = '" + editData.get(1).replace("'", "''") + "', " +
-                COLUMNS.get(3) + " = '" + editData.get(2).replace("'", "''") + "', " +
-                COLUMNS.get(4) + " = '" + editData.get(3).replace("'", "''") + "', " +
-                COLUMNS.get(5) + " = '" + editData.get(4).replace("'", "''") + "' WHERE " + COLUMNS.get(0) + " = " + targetPosition + ";");
-        db.close();
+        try (SQLiteDatabase db = this.getWritableDatabase()) {
+            db.execSQL("UPDATE " + TABLE_NAME + " SET " + COLUMNS.get(1) + " = '" + editData.get(0).replace("'", "''") + "', " +
+                    COLUMNS.get(2) + " = '" + editData.get(1).replace("'", "''") + "', " +
+                    COLUMNS.get(3) + " = '" + editData.get(2).replace("'", "''") + "', " +
+                    COLUMNS.get(4) + " = '" + editData.get(3).replace("'", "''") + "', " +
+                    COLUMNS.get(5) + " = '" + editData.get(4).replace("'", "''") + "' WHERE " + COLUMNS.get(0) + " = " + targetPosition + ";");
+        }
     }
 
     public void resetData(){
-        SQLiteDatabase db = this.getWritableDatabase();
-        db.execSQL("DROP TABLE IF EXISTS " + TABLE_NAME);
-        db.execSQL("CREATE TABLE " + TABLE_NAME + " (" + COLUMNS.get(0) + " INTEGER, " +
-                COLUMNS.get(1) + " TEXT, " +
-                COLUMNS.get(2) + " TEXT, " +
-                COLUMNS.get(3) + " TEXT, " +
-                COLUMNS.get(4) + " TEXT, " +
-                COLUMNS.get(5) + " TEXT);");
-        ContentValues values = new ContentValues();
-        db.beginTransaction();
-        for (String[] data: customcommandsData){
-            values.put(COLUMNS.get(0), data[0]);
-            values.put(COLUMNS.get(1), data[1]);
-            values.put(COLUMNS.get(2), data[2]);
-            values.put(COLUMNS.get(3), data[3]);
-            values.put(COLUMNS.get(4), data[4]);
-            values.put(COLUMNS.get(5), data[5]);
-            db.insert(TABLE_NAME, null, values);
+        try (SQLiteDatabase db = this.getWritableDatabase()) {
+            db.execSQL("DROP TABLE IF EXISTS " + TABLE_NAME);
+            db.execSQL("CREATE TABLE " + TABLE_NAME + " (" + COLUMNS.get(0) + " INTEGER, " +
+                    COLUMNS.get(1) + " TEXT, " +
+                    COLUMNS.get(2) + " TEXT, " +
+                    COLUMNS.get(3) + " TEXT, " +
+                    COLUMNS.get(4) + " TEXT, " +
+                    COLUMNS.get(5) + " TEXT);");
+            ContentValues values = new ContentValues();
+            db.beginTransaction();
+            try {
+                for (String[] data: customcommandsData){
+                    values.put(COLUMNS.get(0), data[0]);
+                    values.put(COLUMNS.get(1), data[1]);
+                    values.put(COLUMNS.get(2), data[2]);
+                    values.put(COLUMNS.get(3), data[3]);
+                    values.put(COLUMNS.get(4), data[4]);
+                    values.put(COLUMNS.get(5), data[5]);
+                    db.insert(TABLE_NAME, null, values);
+                }
+                db.setTransactionSuccessful();
+            } finally {
+                db.endTransaction();
+            }
         }
-        db.setTransactionSuccessful();
-        db.endTransaction();
-        db.close();
     }
 
     public String backupData(String storedDBpath) {
         try {
-            File sd = Environment.getExternalStorageDirectory();
             File data = Environment.getDataDirectory();
-            if (sd.canWrite()) {
-                String currentDBPath = data.getAbsolutePath() + "/data/" + BuildConfig.APPLICATION_ID + "/databases/" + DATABASE_NAME;
-                File currentDB = new File(currentDBPath);
-                File backupDB = new File(storedDBpath);
-                if (currentDB.exists()) {
-                    try (FileInputStream fis = new FileInputStream(currentDB);
-                         FileOutputStream fos = new FileOutputStream(backupDB);
-                         FileChannel src = fis.getChannel();
-                         FileChannel dst = fos.getChannel()) {
-                        dst.transferFrom(src, 0, src.size());
-                    } catch (IOException e) {
-                        Log.e(TAG, e.toString());
-                    }
+            String currentDBPath = data.getAbsolutePath() + "/data/" + BuildConfig.APPLICATION_ID + "/databases/" + DATABASE_NAME;
+            File currentDB = new File(currentDBPath);
+            File backupDB = new File(storedDBpath);
+            if (currentDB.exists()) {
+                try (FileInputStream fis = new FileInputStream(currentDB);
+                     FileOutputStream fos = new FileOutputStream(backupDB);
+                     FileChannel src = fis.getChannel();
+                     FileChannel dst = fos.getChannel()) {
+                    dst.transferFrom(src, 0, src.size());
+                } catch (IOException e) {
+                    Log.e(TAG, e.toString());
                 }
             }
         } catch (Exception e) {
@@ -225,7 +228,12 @@ public class CustomCommandsSQL extends SQLiteOpenHelper {
 
     public String restoreData(String storedDBpath) {
         if (!new File(storedDBpath).exists()) return null;
-        if (SQLiteDatabase.openDatabase(storedDBpath, null, SQLiteDatabase.OPEN_READONLY).getVersion() != 3) return null;
+        try (SQLiteDatabase checkDb = SQLiteDatabase.openDatabase(storedDBpath, null, SQLiteDatabase.OPEN_READONLY)) {
+            if (checkDb.getVersion() != 3) return null;
+        } catch (Exception e) {
+            Log.e(TAG, "Error reading DB version: " + e);
+            return null;
+        }
         if (!verifyDB(storedDBpath)) return null;
         try {
             File sd = appContext.getExternalFilesDir(null);
@@ -237,8 +245,8 @@ public class CustomCommandsSQL extends SQLiteOpenHelper {
                 if (currentDB.exists()) {
                     try (FileInputStream fis = new FileInputStream(backupDB);
                          FileOutputStream fos = new FileOutputStream(currentDB);
-                         FileChannel src = fis.getChannel();
-                         FileChannel dst = fos.getChannel()) {
+                         java.nio.channels.FileChannel src = fis.getChannel();
+                         java.nio.channels.FileChannel dst = fos.getChannel()) {
                         dst.transferFrom(src, 0, src.size());
                     } catch (IOException e) {
                         Log.e(TAG, "Error during file transfer: " + e.getMessage());
@@ -252,10 +260,12 @@ public class CustomCommandsSQL extends SQLiteOpenHelper {
     }
 
     private boolean verifyDB(String storedDBpath){
-        SQLiteDatabase tempDB = SQLiteDatabase.openDatabase(storedDBpath, null, SQLiteDatabase.OPEN_READWRITE);
-        boolean ok = ifTableExists(tempDB, TABLE_NAME);
-        tempDB.close();
-        return ok;
+        try (SQLiteDatabase tempDB = SQLiteDatabase.openDatabase(storedDBpath, null, SQLiteDatabase.OPEN_READWRITE)) {
+            return ifTableExists(tempDB, TABLE_NAME);
+        } catch (Exception e) {
+            Log.e(TAG, e.toString());
+            return false;
+        }
     }
 
     private boolean isOldDB(String storedDBpath) {

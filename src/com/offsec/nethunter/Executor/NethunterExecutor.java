@@ -3,7 +3,6 @@ package com.offsec.nethunter.Executor;
 import android.os.Handler;
 import android.os.Looper;
 
-import com.offsec.nethunter.NetHunterFragment;
 import com.offsec.nethunter.SQL.NethunterSQL;
 import com.offsec.nethunter.models.NethunterModel;
 import com.offsec.nethunter.utils.ShellExecuter;
@@ -102,12 +101,7 @@ public class NethunterExecutor {
             case RUNCMDFORITEM:
                 if (nethunterModelList != null) {
                     NethunterModel model = nethunterModelList.get(position);
-                    // Prevent running vulkan_check as a shell command
-                    if ("vulkan_check".equals(model.getCommand())) {
-                        model.setResult(new String[]{"Vulkan check is not a shell command."});
-                    } else {
-                        model.setResult(new ShellExecuter().RunAsRootOutput(model.getCommand()).split("\\n"));
-                    }
+                    model.setResult(new ShellExecuter().RunAsRootOutput(model.getCommand()).split("\\n"));
                 }
                 break;
             case EDITDATA:

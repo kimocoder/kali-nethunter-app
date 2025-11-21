@@ -1,45 +1,45 @@
 apply plugin: 'com.android.application'
 
-/* tasks.withType(JavaCompile).configureEach {
+tasks.withType(JavaCompile).configureEach {
     options.compilerArgs += ['-Xlint:deprecation', '-Xlint:unchecked']
     options.deprecation = true
-    Optional: fail the build on warnings
-    options.compilerArgs += ['-Werror']
-} */
+    // Optional: fail the build on warnings
+    // options.compilerArgs += ['-Werror']
+}
 
 buildscript {
     repositories {
         google()
         mavenCentral()
-        maven { url "https://chaquo.com/maven" }
+        maven { url = "https://chaquo.com/maven" }
     }
     dependencies {
         //noinspection AndroidGradlePluginVersion
-        classpath 'com.android.tools.build:gradle:8.9.3'
+        classpath 'com.android.tools.build:gradle:8.13.1'
     }
 }
 
 repositories {
     google()
     mavenCentral()
-    maven { url "https://repo.grails.org/grails/plugins" }
+    maven { url = "https://repo.grails.org/grails/plugins" }
     // Snowfall
-    maven { url 'https://jitpack.io' }
-    maven { url "https://chaquo.com/maven" }
+    maven { url = 'https://jitpack.io' }
+    maven { url = "https://chaquo.com/maven" }
 }
 
 android {
-    namespace "com.offsec.nethunter"
+    namespace = "com.offsec.nethunter"
     //noinspection GradleDependency,ExpiredCompileSdkVersion
-    compileSdk 34
+    compileSdk = 34
 
     buildFeatures {
-        dataBinding true
-        aidl true
-        buildConfig true
-        //compose true
+        dataBinding = true
+        aidl = true
+        buildConfig = true
+        // compose = true
         // for view binding:
-        // viewBinding true
+        // viewBinding = true
     }
 
     // Enable CMake/NDK build of libnative-lib.so
@@ -50,20 +50,20 @@ android {
     }
 
     compileOptions {
-        sourceCompatibility JavaVersion.VERSION_1_8
-        targetCompatibility JavaVersion.VERSION_1_8
-        coreLibraryDesugaringEnabled true
+        sourceCompatibility = JavaVersion.VERSION_11
+        targetCompatibility = JavaVersion.VERSION_11
+        coreLibraryDesugaringEnabled = true
     }
 
     defaultConfig {
-        minSdk 21
+        minSdk = 21
         //noinspection OldTargetApi,ExpiredTargetSdkVersion
-        targetSdk 34
+        targetSdk = 34
         //noinspection HighAppVersionCode
-        versionCode 2025090001
-        versionName '2025.4-dev'
-        multiDexEnabled true
-        applicationId "com.offsec.nethunter"
+        versionCode = 2025090001
+        versionName = '2025.4-dev'
+        multiDexEnabled = true
+        applicationId = "com.offsec.nethunter"
 
         // Build and package the native library for common ABIs (at minimum arm64-v8a)
         ndk {
@@ -75,6 +75,7 @@ android {
                 // cppFlags "-O2"
             }
         }
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
 
     signingConfigs {
@@ -95,24 +96,26 @@ android {
             res.srcDirs = ['res']
             assets.srcDirs = ['assets']
             // If you later add prebuilt .so files, place them under src/main/jniLibs/<abi>/
+            // Prevent accidental compilation of androidTest files placed under src/androidTest/**
+            java.exclude 'androidTest/**'
         }
     }
 
     buildTypes {
         debug {
-            minifyEnabled false
-            jniDebuggable true
+            minifyEnabled = false
+            jniDebuggable = true
             buildConfigField "java.util.Date", "BUILD_TIME", "new java.util.Date(" + System.currentTimeMillis() + "L)"
             buildConfigField "String", "BUILD_NAME", "\"" + System.getenv("USER") + "\""
         }
 
         release {
-            //signingConfig signingConfigs.release
-            minifyEnabled false
-            shrinkResources false
-            proguardFiles getDefaultProguardFile('proguard-android.txt')
-            debuggable false
-            jniDebuggable false
+            // signingConfig signingConfigs.release
+            minifyEnabled = false
+            shrinkResources = false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt')
+            debuggable = false
+            jniDebuggable = false
             buildConfigField "java.util.Date", "BUILD_TIME", "new java.util.Date(" + System.currentTimeMillis() + "L)"
             buildConfigField "String", "BUILD_NAME", "\"" + System.getenv("USER") + "\""
         }
@@ -133,9 +136,17 @@ dependencies {
     implementation 'com.google.android.material:material:1.13.0'
     implementation 'androidx.preference:preference:1.2.1'
     implementation 'androidx.viewpager2:viewpager2:1.1.0'
-    implementation 'androidx.navigation:navigation-runtime:2.9.5'
+    implementation 'androidx.navigation:navigation-runtime:2.9.6'
     // Snowfall
     implementation 'com.github.jetradarmobile:android-snowfall:1.2.1'
-    //debugImplementation 'com.squareup.leakcanary:leakcanary-android:3.0-alpha-8'
+    // debugImplementation 'com.squareup.leakcanary:leakcanary-android:3.0-alpha-8'
     coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.1.5'
+
+    // AndroidX test dependencies for instrumented tests (Espresso)
+    androidTestImplementation 'androidx.test.ext:junit:1.3.0'
+    androidTestImplementation 'androidx.test:runner:1.7.0'
+    androidTestImplementation 'androidx.test.espresso:espresso-core:3.7.0'
+    // Fragment testing utilities (allows FragmentScenario)
+    // It's common to include fragment-testing as debugImplementation as well for local debug tests
+    debugImplementation 'androidx.fragment:fragment-testing:1.8.9'
 }

@@ -11,7 +11,6 @@ import android.util.Log;
 
 import com.offsec.nethunter.BuildConfig;
 import com.offsec.nethunter.models.NethunterModel;
-import com.offsec.nethunter.utils.VulkanChecker;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -23,7 +22,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class NethunterSQL extends SQLiteOpenHelper {
-    private final Context context;
     private static final String DATABASE_NAME = "NethunterFragment";
     private static final int DATABASE_VERSION = 2;
     private static NethunterSQL instance;
@@ -50,7 +48,6 @@ public class NethunterSQL extends SQLiteOpenHelper {
 
     private NethunterSQL(Context context) {
         super(context, DATABASE_NAME, null, DATABASE_VERSION);
-        this.context = context;
         COLUMNS.add("id");
         COLUMNS.add("TitleName");
         COLUMNS.add("CommandforResult");
@@ -102,15 +99,6 @@ public class NethunterSQL extends SQLiteOpenHelper {
             String columnValue2 = columnIndex2 != -1 ? cursor.getString(columnIndex2) : null;
             String columnValue3 = columnIndex3 != -1 ? cursor.getString(columnIndex3) : null;
             String columnValue4 = columnIndex4 != -1 ? cursor.getString(columnIndex4) : null;
-
-            // Check for GPU Info row
-            if ("GPU Info".equals(columnValue1) && "vulkan_check".equals(columnValue2)) {
-                boolean supported = VulkanChecker.isVulkanSupported(context);
-                columnValue2 = supported ? "Vulkan supported" : "Vulkan NOT supported";
-                columnValue4 = "0"; // Prevent accidental execution as a shell command
-            } else if ("vulkan_check".equals(columnValue2)) {
-                columnValue2 = "Invalid command: vulkan_check";
-            }
 
             nethunterModelArrayList.add(new NethunterModel(
                     columnValue1,
@@ -200,18 +188,15 @@ public class NethunterSQL extends SQLiteOpenHelper {
     public String backupData(String storedDBpath) {
         try {
             File data = Environment.getDataDirectory();
-            File sd = Environment.getExternalStorageDirectory();
             String currentDBPath = data.getAbsolutePath() + "/data/" + BuildConfig.APPLICATION_ID + "/databases/" + getDatabaseName();
-            if (sd.canWrite()) {
-                File currentDB = new File(currentDBPath);
-                File backupDB = new File(storedDBpath);
-                if (currentDB.exists()) {
-                    try (FileInputStream fis = new FileInputStream(currentDB);
-                         FileChannel src = fis.getChannel();
-                         FileOutputStream fos = new FileOutputStream(backupDB);
-                         FileChannel dst = fos.getChannel()) {
-                        dst.transferFrom(src, 0, src.size());
-                    }
+            File currentDB = new File(currentDBPath);
+            File backupDB = new File(storedDBpath);
+            if (currentDB.exists()) {
+                try (FileInputStream fis = new FileInputStream(currentDB);
+                     FileChannel src = fis.getChannel();
+                     FileOutputStream fos = new FileOutputStream(backupDB);
+                     FileChannel dst = fos.getChannel()) {
+                    dst.transferFrom(src, 0, src.size());
                 }
             }
         } catch (Exception e) {
@@ -230,28 +215,25 @@ public class NethunterSQL extends SQLiteOpenHelper {
         }
         try {
             File data = Environment.getDataDirectory();
-            File sd = Environment.getExternalStorageDirectory();
             String currentDBPath = data.getAbsolutePath() + "/data/" + BuildConfig.APPLICATION_ID + "/databases/" + getDatabaseName();
-            if (sd.canWrite()) {
-                File currentDB = new File(currentDBPath);
-                File backupDB = new File(storedDBpath);
-                if (backupDB.exists()) {
-                    try (FileInputStream fis = new FileInputStream(backupDB);
-                         FileChannel src = fis.getChannel();
-                         FileOutputStream fos = new FileOutputStream(currentDB);
-                         FileChannel dst = fos.getChannel()) {
-                        dst.transferFrom(src, 0, src.size());
-                    } catch (FileNotFoundException e) {
-                        Log.e(TAG, "restoreData file not found: " + storedDBpath, e);
-                        return "File not found: " + e.getMessage();
-                    } catch (IOException e) {
-                        Log.e(TAG, "restoreData I/O error while copying db from: " + storedDBpath, e);
-                        return "I/O error: " + e.getMessage();
-                    }
+            File currentDB = new File(currentDBPath);
+            File backupDB = new File(storedDBpath);
+            if (backupDB.exists()) {
+                try (FileInputStream fis = new FileInputStream(backupDB);
+                     FileChannel src = fis.getChannel();
+                     FileOutputStream fos = new FileOutputStream(currentDB);
+                     FileChannel dst = fos.getChannel()) {
+                    dst.transferFrom(src, 0, src.size());
+                } catch (FileNotFoundException e) {
+                    Log.e(TAG, "restoreData file not found: " + storedDBpath, e);
+                    return "File not found: " + e.getMessage();
+                } catch (IOException e) {
+                    Log.e(TAG, "restoreData I/O error while copying db from: " + storedDBpath, e);
+                    return "I/O error: " + e.getMessage();
                 }
             }
         } catch (Exception e) {
-            Log.e(TAG, "restoreData unexpected error", e);
+            Log.e(TAG, "restoreData failed", e);
             return e.toString();
         }
         return null;

@@ -5,6 +5,7 @@ import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.os.Build;
 import android.os.Bundle;
 import android.text.TextUtils;
 import android.util.Log;
@@ -18,7 +19,6 @@ import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.CompoundButton;
 import android.widget.EditText;
-import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -28,6 +28,7 @@ import com.offsec.nethunter.bridge.Bridge;
 import com.offsec.nethunter.gps.KaliGPSUpdates;
 import com.offsec.nethunter.gps.LocationUpdateService;
 import com.offsec.nethunter.utils.NhPaths;
+import com.offsec.nethunter.utils.PermissionCheck;
 import com.offsec.nethunter.utils.ShellExecuter;
 
 import androidx.activity.result.ActivityResultLauncher;
@@ -121,8 +122,11 @@ public class KaliGpsServiceFragment extends Fragment implements KaliGPSUpdates.R
                 }
         );
 
-        if (context != null && android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
-            if (ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_BACKGROUND_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+        if (context != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            // Use PermissionCheck group to determine if background location is part of the missing set
+            PermissionCheck.Permissions perms = new PermissionCheck.Permissions();
+            boolean hasAllLocation = PermissionCheck.hasPermissions(context, perms.LOCATION_PERMISSIONS);
+            if (!hasAllLocation && ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_BACKGROUND_LOCATION) != PackageManager.PERMISSION_GRANTED) {
                 backgroundLocationPermissionLauncher.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION);
             }
         }
@@ -424,9 +428,11 @@ public class KaliGpsServiceFragment extends Fragment implements KaliGPSUpdates.R
     public void onPositionUpdate(String nmeaSentences) {
         CharSequence charSequence = gpsTextView.getText();
         int maxLines = 20;
-        int index = TextUtils.lastIndexOf(charSequence, '\n', charSequence.length() - 1, maxLines);
-        if (index > 0) {
-            gpsTextView.getEditableText().delete(0, index);
+        if (charSequence.length() > 0) {
+            int index = TextUtils.lastIndexOf(charSequence, '\n', charSequence.length() - 1, maxLines);
+            if (index > 0) {
+                gpsTextView.getEditableText().delete(0, index);
+            }
         }
 
         List<Integer> snrs = extractSatelliteSnrs(nmeaSentences);

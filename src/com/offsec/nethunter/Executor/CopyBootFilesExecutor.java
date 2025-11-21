@@ -69,13 +69,7 @@ public class CopyBootFilesExecutor {
     public final int NH_SYSTEM_LOGGING = 0;
 
     private void logDebug(String tag, String message, Throwable throwable) {
-        if (NH_SYSTEM_LOGGING != 1) return;
-        if (throwable != null) {
-            Log.d(tag, message, throwable);
-        } else {
-            Log.d(tag, message);
-        }
-        logToast(message);
+        return;
     }
 
     private void logToast(String message) {

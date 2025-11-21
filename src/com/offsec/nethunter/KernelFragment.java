@@ -6,7 +6,6 @@ import android.content.Context;
 import android.content.Intent;
 import android.os.Build;
 import android.os.Bundle;
-import android.os.Environment;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuInflater;
@@ -47,6 +46,8 @@ public class KernelFragment extends Fragment implements MenuProvider {
     private Activity activity;
     private final ShellExecuter exe = new ShellExecuter();
     private static final String KERNEL_URL = "https://gitlab.com/yesimxev/kali-nethunter-kernels/-/raw/main/kernels.txt";
+    @SuppressLint("SdCardPath")
+    private static final String PUBLIC_SDCARD_PATH = "/sdcard";
 
     public static KernelFragment newInstance(int sectionNumber) {
         KernelFragment fragment = new KernelFragment();
@@ -137,7 +138,8 @@ public class KernelFragment extends Fragment implements MenuProvider {
                 result -> {
                     if (result.getResultCode() == Activity.RESULT_OK && result.getData() != null) {
                         EditText kernelPath = requireActivity().findViewById(R.id.kernelpath);
-                        String filePath = Objects.requireNonNull(Objects.requireNonNull(result.getData().getData()).getPath()).replace("/document/primary:", Environment.getExternalStorageDirectory().getPath() + "/");
+                        String filePath = Objects.requireNonNull(Objects.requireNonNull(result.getData().getData()).getPath())
+                                .replace("/document/primary:", PUBLIC_SDCARD_PATH + "/");
                         kernelPath.setText(filePath);
                     } else {
                         Toast.makeText(requireActivity(), "No file selected", Toast.LENGTH_SHORT).show();
@@ -194,7 +196,7 @@ public class KernelFragment extends Fragment implements MenuProvider {
                                 String kernelName = kernelsArray[which2];
                                 String cmd = "echo -ne \"\\033]0;Flashing Kernel\\007\" && clear;" +
                                         "echo -e '\\e[34mDownloading " + kernelName + "...\\e[0m';" +
-                                        "cd " + Environment.getExternalStorageDirectory().getPath() + " && " +
+                                        "cd " + PUBLIC_SDCARD_PATH + " && " +
                                         "curl " + KERNEL_URL + "/" + kernelName + " > " + kernelName + "; " +
                                         "echo -e '\\e[32mFlashing kernel...\\e[0m';" +
                                         NhPaths.APP_SCRIPTS_PATH + "/bin/magic-flash " + kernelName + " | awk 'gsub(/ui_print /,\" \") && !/^ $/';" +
@@ -208,7 +210,7 @@ public class KernelFragment extends Fragment implements MenuProvider {
                         } else {
                             String cmd = "echo -ne \"\\033]0;Flashing Kernel\\007\" && clear;" +
                                     "echo -e '\\e[34mDownloading " + kernel_zip + "...\\e[0m';" +
-                                    "cd " + Environment.getExternalStorageDirectory().getPath() + " && " +
+                                    "cd " + PUBLIC_SDCARD_PATH + " && " +
                                     "curl " + KERNEL_URL + "/" + kernel_zip + " > " + kernel_zip + "; " +
                                     "echo -e '\\e[32mFlashing kernel...\\e[0m';" +
                                     NhPaths.APP_SCRIPTS_PATH + "/bin/magic-flash " + kernel_zip + " | awk 'gsub(/ui_print /,\" \") && !/^ $/';" +

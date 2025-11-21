@@ -6,7 +6,6 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.net.Uri;
 import android.os.Bundle;
-import android.os.Environment;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
@@ -194,7 +193,7 @@ public class SearchSploitFragment extends Fragment {
                 .setTitle("SearchSploit setup")
                 .setMessage("SearchSploit needs two dependencies to work, install now?\nThis will run:\napt update && apt install exploitdb python3-six")
                 .setNegativeButton("Cancel", (d,i)-> d.dismiss())
-                .setPositiveButton("Setup", (d,i)-> openTerminalWithCommand("apt update && apt install exploitdb python3-six -y"))
+                .setPositiveButton("Setup", (d,i)-> openTerminalWithCommand())
                 .setCancelable(false)
                 .show();
     }
@@ -205,16 +204,16 @@ public class SearchSploitFragment extends Fragment {
                 .setTitle("SearchSploit setup")
                 .setMessage("Install required packages in chroot now?\nThis will run:\napt update && apt install exploitdb python3-six")
                 .setNegativeButton("Cancel", (d,i)-> d.dismiss())
-                .setPositiveButton("Setup", (d,i)-> openTerminalWithCommand("apt update && apt install exploitdb python3-six -y"))
+                .setPositiveButton("Setup", (d,i)-> openTerminalWithCommand())
                 .setCancelable(false)
                 .show();
     }
 
     // Helper to route commands through TerminalFragment (saves memory vs external NhTerm)
-    private void openTerminalWithCommand(String cmd) {
+    private void openTerminalWithCommand() {
         if (!isAdded()) return;
         FragmentManager fm = requireActivity().getSupportFragmentManager();
-        Fragment term = TerminalFragment.newInstanceWithCommand(R.id.terminal_item, cmd);
+        Fragment term = TerminalFragment.newInstanceWithCommand(R.id.terminal_item, "apt update && apt install exploitdb python3-six -y");
         if (fm.isStateSaved()) {
             fm.beginTransaction()
                     .replace(R.id.container, term)
@@ -328,14 +327,12 @@ public class SearchSploitFragment extends Fragment {
                 if (isFeeded) {
                     NhPaths.showMessage_long(context, "DB FEED DONE");
                     try {
-                        String sd = Environment.getExternalStorageDirectory().getPath();
                         String data = NhPaths.APP_PATH + "/";
                         String DATABASE_NAME = "SearchSploit";
                         String currentDBPath = "databases/" + DATABASE_NAME;
-                        String backupDBPath = "/nh_files/" + DATABASE_NAME;
-
+                        // Use the NetHunter app nh_files directory instead of raw external storage
                         File backupDB = new File(data, currentDBPath);
-                        File currentDB = new File(sd, backupDBPath);
+                        File currentDB = new File(NhPaths.APP_NHFILES_PATH, DATABASE_NAME);
 
                         try (FileInputStream fis = new FileInputStream(currentDB);
                              FileOutputStream fos = new FileOutputStream(backupDB);
@@ -350,7 +347,7 @@ public class SearchSploitFragment extends Fragment {
                     }
                 } else {
                     NhPaths.showMessage_long(context,
-                            "Unable to find Searchsploit files.csv database. Install exploitdb in chroot");
+                            "Unable to find SearchSploit files.csv database. Install exploitdb in chroot");
                 }
                 progressBar.setVisibility(View.GONE);
             });
@@ -472,7 +469,6 @@ class ExploitLoader extends BaseAdapter {
     public SearchSploit getItem(int position) {
         return _exploitList.get(position);
     }
-
     public long getItemId(int position) {
         return position;
     }

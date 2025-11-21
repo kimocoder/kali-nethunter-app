@@ -4,6 +4,7 @@ import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.util.Log;
@@ -23,6 +24,8 @@ import android.text.SpannableString;
 import android.text.style.ForegroundColorSpan;
 import android.Manifest;
 import android.content.pm.PackageManager;
+
+import com.offsec.nethunter.utils.PermissionCheck;
 
 import androidx.core.content.ContextCompat;
 import androidx.core.content.res.ResourcesCompat;
@@ -217,10 +220,10 @@ public class AudioFragment extends Fragment {
     }
 
     private boolean checkAndRequestNotificationPermission() {
-        if (android.os.Build.VERSION.SDK_INT >= 33) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            PermissionCheck.Permissions perms = new PermissionCheck.Permissions();
             String permission = Manifest.permission.POST_NOTIFICATIONS;
-            if (ContextCompat.checkSelfPermission(requireContext(), permission)
-                    != PackageManager.PERMISSION_GRANTED) {
+            if (!PermissionCheck.hasPermissions(requireContext(), perms.NOTIFICATION_PERMISSIONS)) {
                 Log.d(TAG, "Permission check: " + permission + " NOT GRANTED, requesting...");
                 notificationPermissionLauncher.launch(permission);
                 return true;

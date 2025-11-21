@@ -10,7 +10,6 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.os.Build;
 import android.os.Bundle;
-import android.os.Environment;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.Menu;
@@ -83,8 +82,10 @@ public class WifipumpkinFragment extends Fragment {
                 }
                 // Keep existing logic, but avoid root sed and bootkali wrapper
                 String FilePath = Objects.requireNonNull(uri.getPath());
-                // Map DocumentsProvider path to external storage path directly in Java
-                FilePath = FilePath.replace("/document/primary:", "/sdcard/");
+
+                // Map DocumentsProvider path to external storage path using NhPaths.SD_PATH
+                String sdPath = NhPaths.SD_PATH;
+                FilePath = FilePath.replace("/document/primary:", sdPath + "/");
 
                 // List files inside the zip and extract python filename (without .py)
                 String FilePy = exe.RunAsChrootOutput(
@@ -880,7 +881,7 @@ public class WifipumpkinFragment extends Fragment {
     ////
 
     public void run_cmd(String cmd) {
-        Intent intent = Bridge.createExecuteIntent("/data/data/com.offsec.nhterm/files/usr/bin/kali", cmd);
+        @SuppressLint("SdCardPath") Intent intent = Bridge.createExecuteIntent("/data/data/com.offsec.nhterm/files/usr/bin/kali", cmd);
         activity.startActivity(intent);
     }
 }

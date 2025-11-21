@@ -55,9 +55,22 @@
                 app:useCompatPadding="true"
                 app:backgroundTint="?attr/colorPrimary"
                 app:tint="@android:color/white" />
+
+            <com.google.android.material.floatingactionbutton.FloatingActionButton
+                android:id="@+id/fab_fullscreen"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="top|end"
+                android:layout_margin="12dp"
+                android:visibility="gone"
+                android:contentDescription="@string/terminal_toggle_fullscreen"
+                app:srcCompat="@drawable/ic_fullscreen"
+                app:useCompatPadding="true"
+                app:fabSize="mini"
+                app:backgroundTint="?attr/colorSecondary"
+                app:tint="@android:color/white" />
         </FrameLayout>
 
-        <!-- High-end keyboard panel -->
         <com.google.android.material.card.MaterialCardView
             android:id="@+id/keyboard_container_card"
             android:layout_width="match_parent"
@@ -76,7 +89,6 @@
                 android:orientation="vertical"
                 android:padding="12dp">
 
-                <!-- Row 1: ESC + Up + Down (Left/Right removed) -->
                 <LinearLayout
                     android:id="@+id/key_toolbar"
                     android:layout_width="match_parent"
@@ -122,7 +134,6 @@
                         tools:targetApi="26" />
                 </LinearLayout>
 
-                <!-- Row 2: Tab / Ctrl / Clear -->
                 <LinearLayout
                     android:id="@+id/key_toolbar_ctrl"
                     android:layout_width="match_parent"
@@ -169,7 +180,6 @@
                         tools:targetApi="26" />
                 </LinearLayout>
 
-                <!-- Row 3: Input -->
                 <LinearLayout
                     android:id="@+id/input_row"
                     android:layout_width="match_parent"
