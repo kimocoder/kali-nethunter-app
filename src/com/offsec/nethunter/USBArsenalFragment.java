@@ -371,13 +371,13 @@ public class USBArsenalFragment extends Fragment {
                 if (readOnlyCheckBox.isChecked())
                     msg.obj = String.format("%s%s && echo '%s/%s' > /config/usb_gadget/g1/functions/" + usbStorageFunctionName + "/lun.0/file",
                             "echo '1' > /config/usb_gadget/g1/functions/" + usbStorageFunctionName + "/lun.0/ro",
-                            imgFileSpinner.getSelectedItem().toString().contains(".iso") ? " && echo '1' > /config/usb_gadget/g1/functions/" + usbStorageFunctionName + "/lun.0/cdrom" : " && echo '0' > /config/usb_gadget/g1/functions/mass_storage.gs6/lun.0/cdrom",
+                            imgFileSpinner.getSelectedItem().toString().contains(".iso") ? " && echo '1' > /config/usb_gadget/g1/functions/" + usbStorageFunctionName + "/lun.0/cdrom" : " && echo '0' > /config/usb_gadget/g1/functions/" + usbStorageFunctionName + "/lun.0/cdrom",
                             NhPaths.APP_SD_FILES_IMG_PATH,
                             imgFileSpinner.getSelectedItem().toString());
                 else
                     msg.obj = String.format("%s%s && echo '%s/%s' > /config/usb_gadget/g1/functions/" + usbStorageFunctionName + "/lun.0/file",
                             "echo '0' > /config/usb_gadget/g1/functions/" + usbStorageFunctionName + "/lun.0/ro",
-                            imgFileSpinner.getSelectedItem().toString().contains(".iso") ? " && echo '1' > /config/usb_gadget/g1/functions/" + usbStorageFunctionName + "/lun.0/cdrom" : " && echo '0' > /config/usb_gadget/g1/functions/mass_storage.gs6/lun.0/cdrom",
+                            imgFileSpinner.getSelectedItem().toString().contains(".iso") ? " && echo '1' > /config/usb_gadget/g1/functions/" + usbStorageFunctionName + "/lun.0/cdrom" : " && echo '0' > /config/usb_gadget/g1/functions/" + usbStorageFunctionName + "/lun.0/cdrom",
                             NhPaths.APP_SD_FILES_IMG_PATH,
                             imgFileSpinner.getSelectedItem().toString());
                 usbArsenalHandlerThread.getHandler().sendMessage(msg);
