@@ -225,6 +225,7 @@ public class WearHunterFragment extends Fragment {
                 String selected_watch_text = WatchTEXT.getText().toString().trim();
 
                 if (!selected_watch_text.isEmpty()) {
+                    selected_watch_text = selected_watch_text.replace(" ", "%s");
                     String send_text = "adb shell input text \"" + selected_watch_text + "\"";
                     new BootKali(send_text).run_bg();
                     showToast("Sending text input on Watch...");
@@ -245,7 +246,7 @@ public class WearHunterFragment extends Fragment {
             // Launch Watch NH Shell Interactive
             Button WatchNHShellButton = rootView.findViewById(R.id.interactive_bootkali);
             WatchNHShellButton.setOnClickListener(v -> {
-                run_cmd("adb shell su -c /data/data/com.offsec.nethunter/scripts/bootkali");
+                run_cmd("adb shell -t su -c '/data/data/com.offsec.nethunter/scripts/bootkali'");
             });
 
             return rootView;
