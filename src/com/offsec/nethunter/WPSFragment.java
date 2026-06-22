@@ -5,8 +5,6 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
-import android.os.Handler;
-import android.os.Looper;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -64,8 +62,8 @@ public class WPSFragment extends Fragment {
     private String pbcCMD = "";
     private Boolean iswatch;
 
-    public static WPSFragment newInstance(int sectionNumber) {
-        WPSFragment fragment = new WPSFragment();
+    public static WearHunterFragment newInstance(int sectionNumber) {
+        WearHunterFragment fragment = new WearHunterFragment();
         Bundle args = new Bundle();
         args.putInt(ARG_SECTION_NUMBER, sectionNumber);
         fragment.setArguments(args);

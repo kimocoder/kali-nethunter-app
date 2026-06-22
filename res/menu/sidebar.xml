@@ -108,5 +108,9 @@
             android:id="@+id/can_item"
             android:icon="@drawable/ic_action_can"
             android:title="@string/drawertitlecan" />
+        <item
+            android:id="@+id/wearhunter_item"
+            android:icon="@drawable/ic_wearhunter"
+            android:title="@string/drawertitlewearhunter" />
      </group>
 </menu>

@@ -654,6 +654,8 @@ public class AppNavHomeActivity extends AppCompatActivity implements KaliGPSUpda
         FragmentManager fragmentManager = getSupportFragmentManager();
         if (itemId == R.id.nethunter_item) {
             changeFragment(fragmentManager, NetHunterFragment.newInstance(itemId));
+        } else if (itemId == R.id.wearhunter_item) {
+            changeFragment(fragmentManager, WearHunterFragment.newInstance(itemId));
         } else if (itemId == R.id.can_item) {
             changeFragment(fragmentManager, CARsenalFragment.newInstance(itemId));
         } else if (itemId == R.id.kaliservices_item) {
@@ -677,7 +679,7 @@ public class AppNavHomeActivity extends AppCompatActivity implements KaliGPSUpda
         } else if (itemId == R.id.wifipumpkin_item) {
             changeFragment(fragmentManager, WifipumpkinFragment.newInstance(itemId));
         } else if (itemId == R.id.wps_item) {
-            changeFragment(fragmentManager, WPSFragment.newInstance(itemId));
+            changeFragment(fragmentManager, WearHunterFragment.newInstance(itemId));
         } else if (itemId == R.id.bt_item) {
             changeFragment(fragmentManager, BTFragment.newInstance(itemId));
         } else if (itemId == R.id.audio_item) {

@@ -302,6 +302,7 @@
     <string name="drawertitlepineapple">Pineapple Connector</string>
     <string name="drawertitlegps">Wardriving</string>
     <string name="drawertitlecan">CARsenal</string>
+    <string name="drawertitlewearhunter">Wear Hunter</string>
     <string name="drawertitlesettings">Settings</string>
     <string name="drawertitlekernel">Kernel</string>
     <string name="drawertitlemodules">Modules</string>
@@ -1494,4 +1495,28 @@
     <string name="terminal_button_esc">ESC</string>
     <string name="terminal_text_copy">Copy</string>
     <string name="terminal_copy_selected">Copy selected lines</string>
+
+    <!-- Wear Hunter -->
+    <string name="wearhunter">Wear Hunter</string>
+    <string name="wearhunter_description">This module allow you to take control over your NetHunter Watch using ADB over WiFi.</string>
+    <string name="wearhunter_watch_ip_hint">Watch IP</string>
+    <string name="wearhunter_watch_ip_text">192.168.1.10</string>
+    <string name="wearhunter_watch_port_hint">Watch Port</string>
+    <string name="wearhunter_watch_port_text">5555</string>
+    <string name="btn_adb_connect">Connect</string>
+    <string name="btn_adb_disconnect">Disconnect</string>
+    <string name="wearhunter_output">Output</string>
+    <string name="wearhunter_clear_output">Clear</string>
+    <string name="wearhunter_interactive_bootkali">NetHunter Watch Interactive Shell</string>
+    <string name="btn_open_nhapp">Launch NHApp</string>
+    <string name="btn_open_nhterm">Launch NHTerm</string>
+    <string name="btn_write_text">Write Text</string>
+    <string name="btn_enter_keyevent">Enter Keyevent</string>
+    <string name="wearhunter_watch_text_hint">Write Text on Watch</string>
+    <string name="wearhunter_watch_text_text">uname -a</string>
+    <string name="adb_shell_cmd_hint">ADB Shell Command</string>
+    <string name="adb_shell_cmd_text">whoami</string>
+    <string name="btn_run_adb">Run</string>
+    <string name="btn_run_as_root_adb">Run As Root</string>
+
 </resources>
