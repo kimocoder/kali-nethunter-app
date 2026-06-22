@@ -6,6 +6,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuInflater;
@@ -27,6 +28,8 @@ import androidx.viewpager2.widget.ViewPager2;
 
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.offsec.nethunter.bridge.Bridge;
+import com.offsec.nethunter.utils.BootKali;
+import com.offsec.nethunter.utils.NhPaths;
 
 public class WearHunterFragment extends Fragment {
     public static final String TAG = "WearHunterFragment";
@@ -153,10 +156,7 @@ public class WearHunterFragment extends Fragment {
             WatchADBCMD = rootView.findViewById(R.id.adb_shell_cmd);
             WatchTEXT = rootView.findViewById(R.id.watch_text);
 
-            String selected_watch_ip = WatchIP.getText().toString().trim();
-            String selected_watch_port = WatchPORT.getText().toString().trim();
-            String selected_adb_cmd = WatchADBCMD.getText().toString().trim();
-            String selected_watch_text = WatchTEXT.getText().toString().trim();
+
 
             // First run
             Boolean setupdone = sharedpreferences.getBoolean("wearhunter_setup_done", false);
@@ -166,7 +166,8 @@ public class WearHunterFragment extends Fragment {
             // ADB Connect
             Button ADBConnectButton = rootView.findViewById(R.id.button_adb_connect);
             ADBConnectButton.setOnClickListener(v -> {
-
+                String selected_watch_ip = WatchIP.getText().toString().trim();
+                String selected_watch_port = WatchPORT.getText().toString().trim();
                 if (!selected_watch_ip.isEmpty() && !selected_watch_port.isEmpty()) {
                     run_cmd("adb connect " + selected_watch_ip + ":" + selected_watch_port);
                 } else {
@@ -183,7 +184,7 @@ public class WearHunterFragment extends Fragment {
             // Run ADB Command
             Button ADBShellCmdButton = rootView.findViewById(R.id.run_adb);
             ADBShellCmdButton.setOnClickListener(v -> {
-
+                String selected_adb_cmd = WatchADBCMD.getText().toString().trim();
                 if (!selected_adb_cmd.isEmpty()) {
                     run_cmd("adb shell " + selected_adb_cmd);
                 } else {
@@ -191,12 +192,12 @@ public class WearHunterFragment extends Fragment {
                 }
             });
 
-            // Run ADB Command
+            // Run ADB Su Command
             Button ADBShellSuCmdButton = rootView.findViewById(R.id.run_as_root_adb);
             ADBShellSuCmdButton.setOnClickListener(v -> {
-
+                String selected_adb_cmd = WatchADBCMD.getText().toString().trim();
                 if (!selected_adb_cmd.isEmpty()) {
-                    run_cmd("adb shell su " + selected_adb_cmd);
+                    run_cmd("adb shell su -c " + selected_adb_cmd);
                 } else {
                     showToast("Please ensure that ADB Command field is set!");
                 }
@@ -205,36 +206,46 @@ public class WearHunterFragment extends Fragment {
             // Launch NHApp
             Button LaunchNHAppButton = rootView.findViewById(R.id.launch_nh_app);
             LaunchNHAppButton.setOnClickListener(v -> {
-                run_cmd("adb shell am start -n com.offsec.nethunter/.AppNavHomeActivity");
+                String launch_nhapp = "adb shell am start -n com.offsec.nethunter/.AppNavHomeActivity";
+                new BootKali(launch_nhapp).run_bg();
+                showToast("Spawning Nethunter App on Watch...");
             });
 
             // Launch NHTerm
             Button LaunchNHTermButton = rootView.findViewById(R.id.launch_nh_term);
             LaunchNHTermButton.setOnClickListener(v -> {
-                run_cmd("adb shell am start -n com.offsec.nhterm/.ui.term.NeoTermActivity");
+                String launch_nhterm = "adb shell am start -n com.offsec.nhterm/.ui.term.NeoTermActivity";
+                new BootKali(launch_nhterm).run_bg();
+                showToast("Spawning Nethunter Term on Watch...");
             });
 
             // Write Text on Watch
             Button WriteTextButton = rootView.findViewById(R.id.button_write_text);
             WriteTextButton.setOnClickListener(v -> {
+                String selected_watch_text = WatchTEXT.getText().toString().trim();
 
                 if (!selected_watch_text.isEmpty()) {
-                    run_cmd("adb shell input text \"" + selected_watch_text + "\"");
+                    String send_text = "adb shell input text \"" + selected_watch_text + "\"";
+                    new BootKali(send_text).run_bg();
+                    showToast("Sending text input on Watch...");
                 } else {
                     showToast("Please ensure that your Watch Text set!");
                 }
             });
 
             // Send Enter KeyEvent
+            // Todo : Add KeyEvent list and auto convert command
             Button EnterKeyEventButton = rootView.findViewById(R.id.button_enter_key_event);
             EnterKeyEventButton.setOnClickListener(v -> {
-                run_cmd("adb shell input keyevent 66");
+                String send_enter_keyevent = "adb shell input keyevent 66";
+                new BootKali(send_enter_keyevent).run_bg();
+                showToast("Sending Enter KeyEvent on Watch...");
             });
 
             // Launch Watch NH Shell Interactive
             Button WatchNHShellButton = rootView.findViewById(R.id.interactive_bootkali);
             WatchNHShellButton.setOnClickListener(v -> {
-                run_cmd("adb shell su -c /data/data/com.offsec.nethunter/files/scripts/bootkali");
+                run_cmd("adb shell su -c /data/data/com.offsec.nethunter/scripts/bootkali");
             });
 
             return rootView;

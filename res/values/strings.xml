@@ -1513,9 +1513,9 @@
     <string name="btn_write_text">Write Text</string>
     <string name="btn_enter_keyevent">Enter Keyevent</string>
     <string name="wearhunter_watch_text_hint">Write Text on Watch</string>
-    <string name="wearhunter_watch_text_text">uname -a</string>
+    <string name="wearhunter_watch_text_text">whoami</string>
     <string name="adb_shell_cmd_hint">ADB Shell Command</string>
-    <string name="adb_shell_cmd_text">whoami</string>
+    <string name="adb_shell_cmd_text">uname -a</string>
     <string name="btn_run_adb">Run</string>
     <string name="btn_run_as_root_adb">Run As Root</string>
 
