@@ -7,6 +7,7 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.graphics.Typeface;
 import android.media.MediaPlayer;
+import android.net.Uri;
 import android.os.Bundle;
 import android.text.method.LinkMovementMethod;
 import android.view.Gravity;
@@ -17,6 +18,7 @@ import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
+import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -32,6 +34,7 @@ import androidx.viewpager2.adapter.FragmentStateAdapter;
 import androidx.viewpager2.widget.ViewPager2;
 
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
+import com.google.android.material.textfield.TextInputEditText;
 import com.offsec.nethunter.bridge.Bridge;
 import com.offsec.nethunter.utils.BootKali;
 import com.offsec.nethunter.utils.ShellExecuter;
@@ -61,7 +64,7 @@ public class WearHunterFragment extends Fragment {
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
-        View rootView = inflater.inflate(R.layout.wear_hunter, container, false);
+        View rootView = inflater.inflate(R.layout.wearhunter, container, false);
         WearHunterFragment.TabsPagerAdapter tabsPagerAdapter = new WearHunterFragment.TabsPagerAdapter(this);
         ViewPager2 mViewPager = rootView.findViewById(R.id.pagerWearHunter);
         mViewPager.setAdapter(tabsPagerAdapter);
@@ -90,9 +93,10 @@ public class WearHunterFragment extends Fragment {
                 @Override
                 public boolean onMenuItemSelected(@NonNull MenuItem item) {
                     int id = item.getItemId();
-                    if (id == R.id.about) { RunAbout(); return true; }
+                    if (id == R.id.documentation) { RunDocumentation(); return true; }
                     if (id == R.id.setup) { RunSetup(); return true; }
                     if (id == R.id.update) { RunUpdate(); return true; }
+                    if (id == R.id.about) { RunAbout(); return true; }
 
                     return false;
                 }
@@ -114,13 +118,32 @@ public class WearHunterFragment extends Fragment {
 
     public void SetupDialog() {
         MaterialAlertDialogBuilder builder = new MaterialAlertDialogBuilder(requireActivity(), R.style.DialogStyleCompat);
-        builder.setTitle("Welcome to Wear Hunter!");
+        builder.setTitle("Welcome to WearHunter!");
         builder.setMessage("In order to make sure everything is working, an initial setup needs to be done.");
         builder.setPositiveButton("Check & Install", (dialog, which) -> {
             RunSetup();
             sharedpreferences.edit().putBoolean("wearhunter_setup_done", true).apply();
         });
         builder.show();
+    }
+
+    // Documentation item
+    public void RunDocumentation() {
+        String url = "https://www.kali.org/docs/nethunter/nethunter-wearhunter/";
+        Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
+        activity.startActivity(intent);
+    }
+
+    public void RunSetup() {
+        String cmd = "sudo apt update && sudo apt -y install adb";
+        run_cmd(cmd);
+        sharedpreferences.edit().putBoolean("wearhunter_setup_done", true).apply();
+    }
+
+    public void RunUpdate() {
+        String cmd = "sudo apt update && apt --only-upgrade -y install adb";
+        run_cmd(cmd);
+        sharedpreferences.edit().putBoolean("wearhunter_setup_done", true).apply();
     }
 
     public void RunAbout() {
@@ -169,18 +192,6 @@ public class WearHunterFragment extends Fragment {
                 .show();
     }
 
-    public void RunSetup() {
-        String cmd = "sudo apt update && sudo apt -y install adb";
-        run_cmd(cmd);
-        sharedpreferences.edit().putBoolean("wearhunter_setup_done", true).apply();
-    }
-
-    public void RunUpdate() {
-        String cmd = "sudo apt update && apt --only-upgrade -y install adb";
-        run_cmd(cmd);
-        sharedpreferences.edit().putBoolean("wearhunter_setup_done", true).apply();
-    }
-
     public static class TabsPagerAdapter extends FragmentStateAdapter {
         TabsPagerAdapter(@NonNull Fragment fragment) { super(fragment); }
         @NonNull @Override public Fragment createFragment(int position) { return new WearHunterFragment.MainFragment(); }
@@ -205,7 +216,7 @@ public class WearHunterFragment extends Fragment {
         public View onCreateView(LayoutInflater inflater, ViewGroup container,
                                  Bundle savedInstanceState) {
 
-            View rootView = inflater.inflate(R.layout.wear_hunter_main, container, false);
+            View rootView = inflater.inflate(R.layout.wearhunter_main, container, false);
             WatchIP = rootView.findViewById(R.id.watch_ip);
             WatchPORT = rootView.findViewById(R.id.watch_port);
             WatchADBCMD = rootView.findViewById(R.id.adb_shell_cmd);

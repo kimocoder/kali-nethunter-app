@@ -1,12 +1,15 @@
 <menu xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto">
     <item
-        android:id="@+id/about"
-        android:title="About"/>
+        android:id="@+id/documentation"
+        android:title="Documentation"/>
 	<item
         android:id="@+id/setup"
         android:title="Setup"/>
     <item
         android:id="@+id/update"
         android:title="Update"/>
+    <item
+        android:id="@+id/about"
+        android:title="About"/>
 </menu>
