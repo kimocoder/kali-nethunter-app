@@ -494,6 +494,7 @@ public class AppNavHomeActivity extends AppCompatActivity implements KaliGPSUpda
             hideMenuItemIfExists(23);
             hideMenuItemIfExists(24);
             hideMenuItemIfExists(25);
+            hideMenuItemIfExists(26);
         } else {
             snowfall = prefs.getBoolean("snowfall_enabled", true);
         }

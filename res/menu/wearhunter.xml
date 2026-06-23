@@ -6,4 +6,7 @@
     <item
         android:id="@+id/update"
         android:title="Update"/>
+    <item
+        android:id="@+id/about"
+        android:title="About"/>
 </menu>

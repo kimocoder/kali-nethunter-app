@@ -5,8 +5,12 @@ import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.graphics.Typeface;
+import android.media.MediaPlayer;
 import android.os.Bundle;
+import android.text.method.LinkMovementMethod;
 import android.util.Log;
+import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuInflater;
@@ -14,11 +18,13 @@ import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
+import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.core.text.HtmlCompat;
 import androidx.core.view.MenuHost;
 import androidx.core.view.MenuProvider;
 import androidx.fragment.app.Fragment;
@@ -87,6 +93,8 @@ public class WearHunterFragment extends Fragment {
                     int id = item.getItemId();
                     if (id == R.id.setup) { RunSetup(); return true; }
                     if (id == R.id.update) { RunUpdate(); return true; }
+                    if (id == R.id.about) { RunAbout(); return true; }
+
                     return false;
                 }
             };
@@ -128,6 +136,52 @@ public class WearHunterFragment extends Fragment {
         sharedpreferences.edit().putBoolean("wearhunter_setup_done", true).apply();
     }
 
+    public void RunAbout() {
+        LayoutInflater inflater = LayoutInflater.from(activity);
+        View dialogView = inflater.inflate(R.layout.wearhunter_about_dialog, null);
+
+        TextView aboutText = dialogView.findViewById(R.id.about_text);
+
+        aboutText.setText(HtmlCompat.fromHtml(
+                getString(R.string.about_text), HtmlCompat.FROM_HTML_MODE_LEGACY));
+        aboutText.setMovementMethod(LinkMovementMethod.getInstance());
+
+        // Easter egg button setup
+        ImageView easterEggButton = dialogView.findViewById(R.id.easter_egg_button);
+        MediaPlayer mediaPlayer = MediaPlayer.create(activity, R.raw.secret_alarm);
+        final int[] clickCount = {0};
+
+        easterEggButton.setOnClickListener(v -> {
+            clickCount[0]++;
+            if (clickCount[0] == 3) {
+                showToast("Hum??? What's up?");
+            }
+            if (clickCount[0] == 7) {
+                mediaPlayer.start();
+                clickCount[0] = 0; // reset after playing sound
+            }
+        });
+
+        // Create a centered title TextView
+        TextView titleView = new TextView(activity);
+        titleView.setText(R.string.about_wearhunter);
+        titleView.setGravity(Gravity.CENTER);
+        titleView.setTextSize(20);
+        titleView.setTypeface(null, Typeface.BOLD);
+        int padding = (int) (16 * activity.getResources().getDisplayMetrics().density);
+        titleView.setPadding(0, padding, 0, padding);
+
+        new MaterialAlertDialogBuilder(activity, R.style.DialogStyleCompat)
+                .setCustomTitle(titleView)
+                .setView(dialogView)
+                .setNegativeButton("Close", (dialog, id) -> {
+                    if (mediaPlayer.isPlaying()) mediaPlayer.stop();
+                    mediaPlayer.release();
+                    dialog.dismiss();
+                })
+                .show();
+    }
+
     public static class TabsPagerAdapter extends FragmentStateAdapter {
         TabsPagerAdapter(@NonNull Fragment fragment) { super(fragment); }
         @NonNull @Override public Fragment createFragment(int position) { return new WearHunterFragment.MainFragment(); }
@@ -139,6 +193,7 @@ public class WearHunterFragment extends Fragment {
         private TextView WatchPORT;
         private TextView WatchADBCMD;
         private TextView WatchTEXT;
+        private TextView WatchAPKPATH;
 
         @Override
         public void onCreate(@Nullable Bundle savedInstanceState) {
@@ -155,8 +210,7 @@ public class WearHunterFragment extends Fragment {
             WatchPORT = rootView.findViewById(R.id.watch_port);
             WatchADBCMD = rootView.findViewById(R.id.adb_shell_cmd);
             WatchTEXT = rootView.findViewById(R.id.watch_text);
-
-
+            WatchAPKPATH = rootView.findViewById(R.id.apk_path_text);
 
             // First run
             Boolean setupdone = sharedpreferences.getBoolean("wearhunter_setup_done", false);
@@ -171,22 +225,30 @@ public class WearHunterFragment extends Fragment {
                 if (!selected_watch_ip.isEmpty() && !selected_watch_port.isEmpty()) {
                     run_cmd("adb connect " + selected_watch_ip + ":" + selected_watch_port);
                 } else {
-                    showToast("Please ensure that Watch IP field is set!");
+                    showToast("Please ensure that Watch IP and Port field are set!");
                 }
             });
 
             // ADB Disonnect
             Button ADBDisonnectButton = rootView.findViewById(R.id.button_adb_disconnect);
             ADBDisonnectButton.setOnClickListener(v -> {
-                run_cmd("adb disconnect");
+                String selected_watch_ip = WatchIP.getText().toString().trim();
+                String selected_watch_port = WatchPORT.getText().toString().trim();
+                if (!selected_watch_ip.isEmpty() && !selected_watch_port.isEmpty()) {
+                    run_cmd("adb disconnect " + selected_watch_ip + ":" + selected_watch_port);
+                } else {
+                    showToast("Please ensure that Watch IP and Port field are set!");
+                }
             });
 
             // Run ADB Command
             Button ADBShellCmdButton = rootView.findViewById(R.id.run_adb);
             ADBShellCmdButton.setOnClickListener(v -> {
+                String selected_watch_ip = WatchIP.getText().toString().trim();
+                String selected_watch_port = WatchPORT.getText().toString().trim();
                 String selected_adb_cmd = WatchADBCMD.getText().toString().trim();
                 if (!selected_adb_cmd.isEmpty()) {
-                    run_cmd("adb shell " + selected_adb_cmd);
+                    run_cmd("adb -s " + selected_watch_ip + ":" + selected_watch_port + " shell " + selected_adb_cmd);
                 } else {
                     showToast("Please ensure that ADB Command field is set!");
                 }
@@ -195,9 +257,11 @@ public class WearHunterFragment extends Fragment {
             // Run ADB Su Command
             Button ADBShellSuCmdButton = rootView.findViewById(R.id.run_as_root_adb);
             ADBShellSuCmdButton.setOnClickListener(v -> {
+                String selected_watch_ip = WatchIP.getText().toString().trim();
+                String selected_watch_port = WatchPORT.getText().toString().trim();
                 String selected_adb_cmd = WatchADBCMD.getText().toString().trim();
                 if (!selected_adb_cmd.isEmpty()) {
-                    run_cmd("adb shell su -c " + selected_adb_cmd);
+                    run_cmd("adb -s " + selected_watch_ip + ":" + selected_watch_port + " shell su -c " + selected_adb_cmd);
                 } else {
                     showToast("Please ensure that ADB Command field is set!");
                 }
@@ -206,7 +270,9 @@ public class WearHunterFragment extends Fragment {
             // Launch NHApp
             Button LaunchNHAppButton = rootView.findViewById(R.id.launch_nh_app);
             LaunchNHAppButton.setOnClickListener(v -> {
-                String launch_nhapp = "adb shell am start -n com.offsec.nethunter/.AppNavHomeActivity";
+                String selected_watch_ip = WatchIP.getText().toString().trim();
+                String selected_watch_port = WatchPORT.getText().toString().trim();
+                String launch_nhapp = "adb -s " + selected_watch_ip + ":" + selected_watch_port + " shell am start -n com.offsec.nethunter/.AppNavHomeActivity";
                 new BootKali(launch_nhapp).run_bg();
                 showToast("Spawning Nethunter App on Watch...");
             });
@@ -214,7 +280,9 @@ public class WearHunterFragment extends Fragment {
             // Launch NHTerm
             Button LaunchNHTermButton = rootView.findViewById(R.id.launch_nh_term);
             LaunchNHTermButton.setOnClickListener(v -> {
-                String launch_nhterm = "adb shell am start -n com.offsec.nhterm/.ui.term.NeoTermActivity";
+                String selected_watch_ip = WatchIP.getText().toString().trim();
+                String selected_watch_port = WatchPORT.getText().toString().trim();
+                String launch_nhterm = "adb -s " + selected_watch_ip + ":" + selected_watch_port + " shell am start -n com.offsec.nhterm/.ui.term.NeoTermActivity";
                 new BootKali(launch_nhterm).run_bg();
                 showToast("Spawning Nethunter Term on Watch...");
             });
@@ -222,11 +290,13 @@ public class WearHunterFragment extends Fragment {
             // Write Text on Watch
             Button WriteTextButton = rootView.findViewById(R.id.button_write_text);
             WriteTextButton.setOnClickListener(v -> {
+                String selected_watch_ip = WatchIP.getText().toString().trim();
+                String selected_watch_port = WatchPORT.getText().toString().trim();
                 String selected_watch_text = WatchTEXT.getText().toString().trim();
 
                 if (!selected_watch_text.isEmpty()) {
                     selected_watch_text = selected_watch_text.replace(" ", "%s");
-                    String send_text = "adb shell input text \"" + selected_watch_text + "\"";
+                    String send_text = "adb -s " + selected_watch_ip + ":" + selected_watch_port + " shell input text \"" + selected_watch_text + "\"";
                     new BootKali(send_text).run_bg();
                     showToast("Sending text input on Watch...");
                 } else {
@@ -235,10 +305,11 @@ public class WearHunterFragment extends Fragment {
             });
 
             // Send Enter KeyEvent
-            // Todo : Add KeyEvent list and auto convert command
             Button EnterKeyEventButton = rootView.findViewById(R.id.button_enter_key_event);
             EnterKeyEventButton.setOnClickListener(v -> {
-                String send_enter_keyevent = "adb shell input keyevent 66";
+                String selected_watch_ip = WatchIP.getText().toString().trim();
+                String selected_watch_port = WatchPORT.getText().toString().trim();
+                String send_enter_keyevent = "adb -s " + selected_watch_ip + ":" + selected_watch_port + " shell input keyevent 66";
                 new BootKali(send_enter_keyevent).run_bg();
                 showToast("Sending Enter KeyEvent on Watch...");
             });
@@ -246,7 +317,22 @@ public class WearHunterFragment extends Fragment {
             // Launch Watch NH Shell Interactive
             Button WatchNHShellButton = rootView.findViewById(R.id.interactive_bootkali);
             WatchNHShellButton.setOnClickListener(v -> {
-                run_cmd("adb shell -t su -c '/data/data/com.offsec.nethunter/scripts/bootkali'");
+                String selected_watch_ip = WatchIP.getText().toString().trim();
+                String selected_watch_port = WatchPORT.getText().toString().trim();
+                run_cmd("adb -s " + selected_watch_ip + ":" + selected_watch_port + " shell -t su -c '/data/data/com.offsec.nethunter/scripts/bootkali'");
+            });
+
+            // Run ADB Install Apk
+            Button ADBInstallButton = rootView.findViewById(R.id.adb_install_apk);
+            ADBInstallButton.setOnClickListener(v -> {
+                String selected_apk_path = WatchAPKPATH.getText().toString().trim();
+                if (!selected_apk_path.isEmpty()) {
+                    String selected_watch_ip = WatchIP.getText().toString().trim();
+                    String selected_watch_port = WatchPORT.getText().toString().trim();
+                    run_cmd("adb -s " + selected_watch_ip + ":" + selected_watch_port + " install " + selected_apk_path);
+                } else {
+                    showToast("Please ensure that APK Path field is set!");
+                }
             });
 
             return rootView;
