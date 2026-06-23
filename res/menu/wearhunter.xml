@@ -9,4 +9,10 @@
     <item
         android:id="@+id/about"
         android:title="About"/>
+    <item
+        android:id="@+id/adb_server_start"
+        android:title="ADB Server Start"/>
+    <item
+        android:id="@+id/adb_server_kill"
+        android:title="ADB Server Kill"/>
 </menu>

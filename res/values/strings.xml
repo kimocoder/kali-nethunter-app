@@ -1498,8 +1498,11 @@
 
     <!-- Wear Hunter -->
     <string name="wearhunter">Wear Hunter</string>
+    <string name="adb_shell">ADB Shell</string>
+    <string name="adb_input">ADB Input</string>
+    <string name="adb_install">ADB Install</string>
     <string name="about_wearhunter">About Wear Hunter</string>
-    <string name="wearhunter_description">This module allow you to take control over your NetHunter Watch using ADB over WiFi.</string>
+    <string name="wearhunter_description">This module allow you to take control over your NetHunter Watch using ADB over WiFi or Bluetooth.</string>
     <string name="wearhunter_watch_ip_hint">Watch IP</string>
     <string name="wearhunter_watch_ip_text">192.168.1.10</string>
     <string name="wearhunter_watch_port_hint">Watch Port</string>
@@ -1522,5 +1525,7 @@
     <string name="wearhunter_apk_path_hint">APK Path</string>
     <string name="wearhunter_apk_path">/sdcard/Hijacker-release-v1.7.apk</string>
     <string name="wearhunter_install_apk">Install</string>
+    <string name="btn_adb_tcpip">ADB TCP/IP</string>
+    <string name="btn_adb_forward_adbhub">Forward adb-hub</string>
 
 </resources>

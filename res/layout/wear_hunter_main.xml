@@ -108,6 +108,36 @@
                         style="@style/Widget.Material3.Button.Outlined"
                         android:layout_marginTop="8dp"/>
                 </GridLayout>
+                <GridLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:columnCount="2"
+                    android:rowCount="1"
+                    android:useDefaultMargins="true">
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/button_adb_tcpip"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_columnWeight="1"
+                        android:layout_row="0"
+                        android:layout_column="0"
+                        android:text="@string/btn_adb_tcpip"
+                        android:textColor="@android:color/holo_orange_light"
+                        style="@style/Widget.Material3.Button.Outlined"
+                        android:layout_marginTop="8dp"/>
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/button_adb_forward_adbhub"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_columnWeight="1"
+                        android:layout_row="0"
+                        android:layout_column="1"
+                        android:text="@string/btn_adb_forward_adbhub"
+                        android:textColor="@android:color/holo_orange_light"
+                        style="@style/Widget.Material3.Button.Outlined"
+                        android:layout_marginTop="8dp"/>
+                </GridLayout>
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
@@ -123,6 +153,17 @@
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
                 android:padding="12dp">
+
+                <TextView
+                    android:id="@+id/adbshell_title"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center"
+                    android:text="@string/adb_shell"
+                    android:textColor="@android:color/holo_orange_light"
+                    android:textStyle="bold"
+                    android:textSize="20sp"
+                    android:paddingBottom="8dp" />
 
                 <com.google.android.material.textfield.TextInputLayout
                     android:layout_width="match_parent"
@@ -197,6 +238,17 @@
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
                 android:padding="12dp">
+
+                <TextView
+                    android:id="@+id/adbinput_title"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center"
+                    android:text="@string/adb_input"
+                    android:textColor="@android:color/holo_orange_light"
+                    android:textStyle="bold"
+                    android:textSize="20sp"
+                    android:paddingBottom="8dp" />
 
                 <com.google.android.material.textfield.TextInputLayout
                     android:layout_width="match_parent"
@@ -282,6 +334,17 @@
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
                 android:padding="12dp">
+
+                <TextView
+                    android:id="@+id/adbinstall_title"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center"
+                    android:text="@string/adb_install"
+                    android:textColor="@android:color/holo_orange_light"
+                    android:textStyle="bold"
+                    android:textSize="20sp"
+                    android:paddingBottom="8dp" />
 
                 <com.google.android.material.textfield.TextInputLayout
                     android:layout_width="match_parent"

@@ -94,6 +94,8 @@ public class WearHunterFragment extends Fragment {
                     if (id == R.id.setup) { RunSetup(); return true; }
                     if (id == R.id.update) { RunUpdate(); return true; }
                     if (id == R.id.about) { RunAbout(); return true; }
+                    if (id == R.id.adb_server_start) { ADBServerStart(); return true; }
+                    if (id == R.id.adb_server_kill) { ADBServerKill(); return true; }
 
                     return false;
                 }
@@ -182,6 +184,18 @@ public class WearHunterFragment extends Fragment {
                 .show();
     }
 
+    public void ADBServerStart() {
+        String cmd = "adb start-server";
+        new BootKali(cmd).run_bg();
+        showToast("ADB Server Started!");
+    }
+
+    public void ADBServerKill() {
+        String cmd = "adb kill-server";
+        new BootKali(cmd).run_bg();
+        showToast("ADB Server Killed!");
+    }
+
     public static class TabsPagerAdapter extends FragmentStateAdapter {
         TabsPagerAdapter(@NonNull Fragment fragment) { super(fragment); }
         @NonNull @Override public Fragment createFragment(int position) { return new WearHunterFragment.MainFragment(); }
@@ -238,6 +252,30 @@ public class WearHunterFragment extends Fragment {
                     run_cmd("adb disconnect " + selected_watch_ip + ":" + selected_watch_port);
                 } else {
                     showToast("Please ensure that Watch IP and Port field are set!");
+                }
+            });
+
+            // ADB TCPIP
+            Button ADBTCPIPButton = rootView.findViewById(R.id.button_adb_tcpip);
+            ADBTCPIPButton.setOnClickListener(v -> {
+                String selected_watch_port = WatchPORT.getText().toString().trim();
+                if (!selected_watch_port.isEmpty()) {
+                    run_cmd("adb tcpip " + selected_watch_port);
+                    showToast("Restart ADB in TCP/IP mode!");
+                } else {
+                    showToast("Please ensure that Watch Port field are set!");
+                }
+            });
+
+            // ADB Forward adb-hub
+            Button ADBForwardHubButton = rootView.findViewById(R.id.button_adb_forward_adbhub);
+            ADBForwardHubButton.setOnClickListener(v -> {
+                String selected_watch_port = WatchPORT.getText().toString().trim();
+                if (!selected_watch_port.isEmpty()) {
+                    run_cmd("adb forward tcp:" + selected_watch_port + " localabstract:/adb-hub");
+                    showToast("TCP port " + selected_watch_port + " forwarded to localbastract:/adb-hub!");
+                } else {
+                    showToast("Please ensure that Watch Port field are set!");
                 }
             });
 
