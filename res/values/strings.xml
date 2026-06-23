@@ -1509,6 +1509,12 @@
     <string name="wearhunter_watch_port_text">5555</string>
     <string name="btn_adb_connect">Connect</string>
     <string name="btn_adb_disconnect">Disconnect</string>
+    <string name="btn_adb_devices">Devices</string>
+    <string name="btn_adb_setprop">setprop service.adb.tcp.port</string>
+    <string name="btn_adbd_start">ADBD Start</string>
+    <string name="btn_adbd_stop">ADBD Stop</string>
+    <string name="btn_adb_start">ADB Server Start</string>
+    <string name="btn_adb_kill">ADB Server Kill</string>
     <string name="wearhunter_output">Output</string>
     <string name="wearhunter_clear_output">Clear</string>
     <string name="wearhunter_interactive_bootkali">NetHunter Watch Interactive Shell</string>

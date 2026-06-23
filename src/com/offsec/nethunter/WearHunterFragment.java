@@ -9,7 +9,6 @@ import android.graphics.Typeface;
 import android.media.MediaPlayer;
 import android.os.Bundle;
 import android.text.method.LinkMovementMethod;
-import android.util.Log;
 import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.Menu;
@@ -35,7 +34,7 @@ import androidx.viewpager2.widget.ViewPager2;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.offsec.nethunter.bridge.Bridge;
 import com.offsec.nethunter.utils.BootKali;
-import com.offsec.nethunter.utils.NhPaths;
+import com.offsec.nethunter.utils.ShellExecuter;
 
 public class WearHunterFragment extends Fragment {
     public static final String TAG = "WearHunterFragment";
@@ -91,11 +90,9 @@ public class WearHunterFragment extends Fragment {
                 @Override
                 public boolean onMenuItemSelected(@NonNull MenuItem item) {
                     int id = item.getItemId();
+                    if (id == R.id.about) { RunAbout(); return true; }
                     if (id == R.id.setup) { RunSetup(); return true; }
                     if (id == R.id.update) { RunUpdate(); return true; }
-                    if (id == R.id.about) { RunAbout(); return true; }
-                    if (id == R.id.adb_server_start) { ADBServerStart(); return true; }
-                    if (id == R.id.adb_server_kill) { ADBServerKill(); return true; }
 
                     return false;
                 }
@@ -124,18 +121,6 @@ public class WearHunterFragment extends Fragment {
             sharedpreferences.edit().putBoolean("wearhunter_setup_done", true).apply();
         });
         builder.show();
-    }
-
-    public void RunSetup() {
-        String cmd = "sudo apt update && sudo apt -y install adb";
-        run_cmd(cmd);
-        sharedpreferences.edit().putBoolean("wearhunter_setup_done", true).apply();
-    }
-
-    public void RunUpdate() {
-        String cmd = "sudo apt update && apt --only-upgrade -y install adb";
-        run_cmd(cmd);
-        sharedpreferences.edit().putBoolean("wearhunter_setup_done", true).apply();
     }
 
     public void RunAbout() {
@@ -184,16 +169,16 @@ public class WearHunterFragment extends Fragment {
                 .show();
     }
 
-    public void ADBServerStart() {
-        String cmd = "adb start-server";
-        new BootKali(cmd).run_bg();
-        showToast("ADB Server Started!");
+    public void RunSetup() {
+        String cmd = "sudo apt update && sudo apt -y install adb";
+        run_cmd(cmd);
+        sharedpreferences.edit().putBoolean("wearhunter_setup_done", true).apply();
     }
 
-    public void ADBServerKill() {
-        String cmd = "adb kill-server";
-        new BootKali(cmd).run_bg();
-        showToast("ADB Server Killed!");
+    public void RunUpdate() {
+        String cmd = "sudo apt update && apt --only-upgrade -y install adb";
+        run_cmd(cmd);
+        sharedpreferences.edit().putBoolean("wearhunter_setup_done", true).apply();
     }
 
     public static class TabsPagerAdapter extends FragmentStateAdapter {
@@ -203,6 +188,7 @@ public class WearHunterFragment extends Fragment {
     }
 
     public static class MainFragment extends WearHunterFragment {
+        final ShellExecuter exe = new ShellExecuter();
         private TextView WatchIP;
         private TextView WatchPORT;
         private TextView WatchADBCMD;
@@ -239,7 +225,7 @@ public class WearHunterFragment extends Fragment {
                 if (!selected_watch_ip.isEmpty() && !selected_watch_port.isEmpty()) {
                     run_cmd("adb connect " + selected_watch_ip + ":" + selected_watch_port);
                 } else {
-                    showToast("Please ensure that Watch IP and Port field are set!");
+                    showToast("Please ensure that Watch IP/PORT are set!");
                 }
             });
 
@@ -251,8 +237,50 @@ public class WearHunterFragment extends Fragment {
                 if (!selected_watch_ip.isEmpty() && !selected_watch_port.isEmpty()) {
                     run_cmd("adb disconnect " + selected_watch_ip + ":" + selected_watch_port);
                 } else {
-                    showToast("Please ensure that Watch IP and Port field are set!");
+                    showToast("Please ensure that Watch IP/PORT are set!");
                 }
+            });
+
+            // setprop
+            Button SetpropButton = rootView.findViewById(R.id.button_adb_setprop);
+            SetpropButton.setOnClickListener(v -> {
+                String selected_watch_port = WatchPORT.getText().toString().trim();
+                if (!selected_watch_port.isEmpty()) {
+                    exe.RunAsRootOutput("setprop service.adb.tcp.port " + selected_watch_port);
+                    showToast("Setting property of service.adb.tcp.port to port " + selected_watch_port + "!");
+                } else {
+                    showToast("Please ensure that Watch PORT are set!");
+                }
+            });
+
+            // Start ADBD
+            Button ADBDStartButton = rootView.findViewById(R.id.button_adbd_start);
+            ADBDStartButton.setOnClickListener(v -> {
+                exe.RunAsRootOutput("start adbd");
+                showToast("ADBD Started!");
+            });
+
+            // Stop ADBD
+            Button ADBDStopButton = rootView.findViewById(R.id.button_adbd_stop);
+            ADBDStopButton.setOnClickListener(v -> {
+                exe.RunAsRootOutput("stop adbd");
+                showToast("ADBD Stopped!");
+            });
+
+            // ADB Server Start
+            Button ADBServerStartButton = rootView.findViewById(R.id.button_adb_start);
+            ADBServerStartButton.setOnClickListener(v -> {
+                String cmd = "adb start-server";
+                new BootKali(cmd).run_bg();
+                showToast("ADB Server Started!");
+            });
+
+            // ADB Server Kill
+            Button ADBServerKillButton = rootView.findViewById(R.id.button_adb_kill);
+            ADBServerKillButton.setOnClickListener(v -> {
+                String cmd = "adb kill-server";
+                new BootKali(cmd).run_bg();
+                showToast("ADB Server Killed!");
             });
 
             // ADB TCPIP
@@ -263,7 +291,7 @@ public class WearHunterFragment extends Fragment {
                     run_cmd("adb tcpip " + selected_watch_port);
                     showToast("Restart ADB in TCP/IP mode!");
                 } else {
-                    showToast("Please ensure that Watch Port field are set!");
+                    showToast("Please ensure that Watch PORT are set!");
                 }
             });
 
@@ -275,7 +303,35 @@ public class WearHunterFragment extends Fragment {
                     run_cmd("adb forward tcp:" + selected_watch_port + " localabstract:/adb-hub");
                     showToast("TCP port " + selected_watch_port + " forwarded to localbastract:/adb-hub!");
                 } else {
-                    showToast("Please ensure that Watch Port field are set!");
+                    showToast("Please ensure that Watch PORT are set!");
+                }
+            });
+
+            // Launch NHApp
+            Button LaunchNHAppButton = rootView.findViewById(R.id.launch_nh_app);
+            LaunchNHAppButton.setOnClickListener(v -> {
+                String selected_watch_ip = WatchIP.getText().toString().trim();
+                String selected_watch_port = WatchPORT.getText().toString().trim();
+                if (!selected_watch_ip.isEmpty() && !selected_watch_port.isEmpty()) {
+                    String launch_nhapp = "adb -s " + selected_watch_ip + ":" + selected_watch_port + " shell am start -n com.offsec.nethunter/.AppNavHomeActivity";
+                    new BootKali(launch_nhapp).run_bg();
+                    showToast("Spawning Nethunter App on Watch...");
+                } else {
+                    showToast("Please ensure that Watch IP/PORT are set!");
+                }
+            });
+
+            // Launch NHTerm
+            Button LaunchNHTermButton = rootView.findViewById(R.id.launch_nh_term);
+            LaunchNHTermButton.setOnClickListener(v -> {
+                String selected_watch_ip = WatchIP.getText().toString().trim();
+                String selected_watch_port = WatchPORT.getText().toString().trim();
+                if (!selected_watch_ip.isEmpty() && !selected_watch_port.isEmpty()) {
+                    String launch_nhterm = "adb -s " + selected_watch_ip + ":" + selected_watch_port + " shell am start -n com.offsec.nhterm/.ui.term.NeoTermActivity";
+                    new BootKali(launch_nhterm).run_bg();
+                    showToast("Spawning Nethunter Term on Watch...");
+                } else {
+                    showToast("Please ensure that Watch IP/PORT are set!");
                 }
             });
 
@@ -285,10 +341,10 @@ public class WearHunterFragment extends Fragment {
                 String selected_watch_ip = WatchIP.getText().toString().trim();
                 String selected_watch_port = WatchPORT.getText().toString().trim();
                 String selected_adb_cmd = WatchADBCMD.getText().toString().trim();
-                if (!selected_adb_cmd.isEmpty()) {
+                if (!selected_watch_ip.isEmpty() && !selected_watch_port.isEmpty() && !selected_adb_cmd.isEmpty()) {
                     run_cmd("adb -s " + selected_watch_ip + ":" + selected_watch_port + " shell " + selected_adb_cmd);
                 } else {
-                    showToast("Please ensure that ADB Command field is set!");
+                    showToast("Please ensure that Watch IP/PORT ADB Command are set!");
                 }
             });
 
@@ -298,31 +354,24 @@ public class WearHunterFragment extends Fragment {
                 String selected_watch_ip = WatchIP.getText().toString().trim();
                 String selected_watch_port = WatchPORT.getText().toString().trim();
                 String selected_adb_cmd = WatchADBCMD.getText().toString().trim();
-                if (!selected_adb_cmd.isEmpty()) {
+                if (!selected_watch_ip.isEmpty() && !selected_watch_port.isEmpty() && !selected_adb_cmd.isEmpty()) {
                     run_cmd("adb -s " + selected_watch_ip + ":" + selected_watch_port + " shell su -c " + selected_adb_cmd);
                 } else {
-                    showToast("Please ensure that ADB Command field is set!");
+                    showToast("Please ensure that Watch IP/PORT and ADB Command are set!");
                 }
             });
 
-            // Launch NHApp
-            Button LaunchNHAppButton = rootView.findViewById(R.id.launch_nh_app);
-            LaunchNHAppButton.setOnClickListener(v -> {
+            // Launch Watch NH Shell Interactive
+            Button WatchNHShellButton = rootView.findViewById(R.id.interactive_bootkali);
+            WatchNHShellButton.setOnClickListener(v -> {
                 String selected_watch_ip = WatchIP.getText().toString().trim();
                 String selected_watch_port = WatchPORT.getText().toString().trim();
-                String launch_nhapp = "adb -s " + selected_watch_ip + ":" + selected_watch_port + " shell am start -n com.offsec.nethunter/.AppNavHomeActivity";
-                new BootKali(launch_nhapp).run_bg();
-                showToast("Spawning Nethunter App on Watch...");
-            });
-
-            // Launch NHTerm
-            Button LaunchNHTermButton = rootView.findViewById(R.id.launch_nh_term);
-            LaunchNHTermButton.setOnClickListener(v -> {
-                String selected_watch_ip = WatchIP.getText().toString().trim();
-                String selected_watch_port = WatchPORT.getText().toString().trim();
-                String launch_nhterm = "adb -s " + selected_watch_ip + ":" + selected_watch_port + " shell am start -n com.offsec.nhterm/.ui.term.NeoTermActivity";
-                new BootKali(launch_nhterm).run_bg();
-                showToast("Spawning Nethunter Term on Watch...");
+                if (!selected_watch_ip.isEmpty() && !selected_watch_port.isEmpty()) {
+                    run_cmd("adb -s " + selected_watch_ip + ":" + selected_watch_port + " shell -t su -c '/data/data/com.offsec.nethunter/scripts/bootkali'");
+                    showToast("Spawning Nethunter Interactive Shell...");
+                } else {
+                    showToast("Please ensure that Watch IP/PORT are set!");
+                }
             });
 
             // Write Text on Watch
@@ -331,14 +380,13 @@ public class WearHunterFragment extends Fragment {
                 String selected_watch_ip = WatchIP.getText().toString().trim();
                 String selected_watch_port = WatchPORT.getText().toString().trim();
                 String selected_watch_text = WatchTEXT.getText().toString().trim();
-
-                if (!selected_watch_text.isEmpty()) {
+                if (!selected_watch_ip.isEmpty() && !selected_watch_port.isEmpty() && !selected_watch_text.isEmpty()) {
                     selected_watch_text = selected_watch_text.replace(" ", "%s");
                     String send_text = "adb -s " + selected_watch_ip + ":" + selected_watch_port + " shell input text \"" + selected_watch_text + "\"";
                     new BootKali(send_text).run_bg();
                     showToast("Sending text input on Watch...");
                 } else {
-                    showToast("Please ensure that your Watch Text set!");
+                    showToast("Please ensure that your Watch IP/PORT/Text are set!");
                 }
             });
 
@@ -347,29 +395,25 @@ public class WearHunterFragment extends Fragment {
             EnterKeyEventButton.setOnClickListener(v -> {
                 String selected_watch_ip = WatchIP.getText().toString().trim();
                 String selected_watch_port = WatchPORT.getText().toString().trim();
-                String send_enter_keyevent = "adb -s " + selected_watch_ip + ":" + selected_watch_port + " shell input keyevent 66";
-                new BootKali(send_enter_keyevent).run_bg();
-                showToast("Sending Enter KeyEvent on Watch...");
-            });
-
-            // Launch Watch NH Shell Interactive
-            Button WatchNHShellButton = rootView.findViewById(R.id.interactive_bootkali);
-            WatchNHShellButton.setOnClickListener(v -> {
-                String selected_watch_ip = WatchIP.getText().toString().trim();
-                String selected_watch_port = WatchPORT.getText().toString().trim();
-                run_cmd("adb -s " + selected_watch_ip + ":" + selected_watch_port + " shell -t su -c '/data/data/com.offsec.nethunter/scripts/bootkali'");
+                if (!selected_watch_ip.isEmpty() && !selected_watch_port.isEmpty()) {
+                    String send_enter_keyevent = "adb -s " + selected_watch_ip + ":" + selected_watch_port + " shell input keyevent 66";
+                    new BootKali(send_enter_keyevent).run_bg();
+                    showToast("Sending Enter KeyEvent on Watch...");
+                } else {
+                    showToast("Please ensure that Watch IP/PORT are set!");
+                }
             });
 
             // Run ADB Install Apk
             Button ADBInstallButton = rootView.findViewById(R.id.adb_install_apk);
             ADBInstallButton.setOnClickListener(v -> {
+                String selected_watch_ip = WatchIP.getText().toString().trim();
+                String selected_watch_port = WatchPORT.getText().toString().trim();
                 String selected_apk_path = WatchAPKPATH.getText().toString().trim();
-                if (!selected_apk_path.isEmpty()) {
-                    String selected_watch_ip = WatchIP.getText().toString().trim();
-                    String selected_watch_port = WatchPORT.getText().toString().trim();
+                if (!selected_watch_ip.isEmpty() && !selected_watch_port.isEmpty() && !selected_apk_path.isEmpty()) {
                     run_cmd("adb -s " + selected_watch_ip + ":" + selected_watch_port + " install " + selected_apk_path);
                 } else {
-                    showToast("Please ensure that APK Path field is set!");
+                    showToast("Please ensure that Watch IP/PORT and APK Path are set!");
                 }
             });
 
