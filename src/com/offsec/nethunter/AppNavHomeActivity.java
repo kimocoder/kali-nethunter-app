@@ -680,7 +680,7 @@ public class AppNavHomeActivity extends AppCompatActivity implements KaliGPSUpda
         } else if (itemId == R.id.wifipumpkin_item) {
             changeFragment(fragmentManager, WifipumpkinFragment.newInstance(itemId));
         } else if (itemId == R.id.wps_item) {
-            changeFragment(fragmentManager, WearHunterFragment.newInstance(itemId));
+            changeFragment(fragmentManager, WPSFragment.newInstance(itemId));
         } else if (itemId == R.id.bt_item) {
             changeFragment(fragmentManager, BTFragment.newInstance(itemId));
         } else if (itemId == R.id.audio_item) {

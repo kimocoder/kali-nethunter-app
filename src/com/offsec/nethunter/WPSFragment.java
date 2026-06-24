@@ -62,8 +62,8 @@ public class WPSFragment extends Fragment {
     private String pbcCMD = "";
     private Boolean iswatch;
 
-    public static WearHunterFragment newInstance(int sectionNumber) {
-        WearHunterFragment fragment = new WearHunterFragment();
+    public static WPSFragment newInstance(int sectionNumber) {
+        WPSFragment fragment = new WPSFragment();
         Bundle args = new Bundle();
         args.putInt(ARG_SECTION_NUMBER, sectionNumber);
         fragment.setArguments(args);
