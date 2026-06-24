@@ -90,7 +90,7 @@ public class SETFragment extends Fragment {
             menuProvider = new MenuProvider() {
                 @Override
                 public void onCreateMenu(@NonNull Menu menu, @NonNull MenuInflater menuInflater) {
-                    menuInflater.inflate(R.menu.bt, menu);
+                    menuInflater.inflate(R.menu.set, menu);
                 }
                 @Override
                 public boolean onMenuItemSelected(@NonNull MenuItem item) {
