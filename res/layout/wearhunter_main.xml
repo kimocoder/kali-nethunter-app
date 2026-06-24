@@ -85,37 +85,6 @@
                     android:rowCount="1"
                     android:useDefaultMargins="true">
                     <com.google.android.material.button.MaterialButton
-                        android:id="@+id/button_adb_connect"
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_columnWeight="1"
-                        android:layout_row="0"
-                        android:layout_column="0"
-                        android:text="@string/btn_adb_connect"
-                        android:textColor="@android:color/holo_orange_light"
-                        style="@style/Widget.Material3.Button.Outlined"
-                        android:layout_marginTop="8dp"/>
-
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/button_adb_disconnect"
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_columnWeight="1"
-                        android:layout_row="0"
-                        android:layout_column="1"
-                        android:text="@string/btn_adb_disconnect"
-                        android:textColor="@android:color/holo_orange_light"
-                        style="@style/Widget.Material3.Button.Outlined"
-                        android:layout_marginTop="8dp"/>
-                </GridLayout>
-
-                <GridLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:columnCount="3"
-                    android:rowCount="1"
-                    android:useDefaultMargins="true">
-                    <com.google.android.material.button.MaterialButton
                         android:id="@+id/button_adb_setprop"
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
@@ -123,68 +92,6 @@
                         android:layout_row="0"
                         android:layout_column="0"
                         android:text="@string/btn_adb_setprop"
-                        android:textColor="@android:color/holo_orange_light"
-                        style="@style/Widget.Material3.Button.Outlined"
-                        android:layout_marginTop="8dp"/>
-                </GridLayout>
-
-                <GridLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:columnCount="2"
-                    android:rowCount="1"
-                    android:useDefaultMargins="true">
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/button_adbd_start"
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_columnWeight="1"
-                        android:layout_row="0"
-                        android:layout_column="0"
-                        android:text="@string/btn_adbd_start"
-                        android:textColor="@android:color/holo_orange_light"
-                        style="@style/Widget.Material3.Button.Outlined"
-                        android:layout_marginTop="8dp"/>
-
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/button_adbd_stop"
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_columnWeight="1"
-                        android:layout_row="0"
-                        android:layout_column="1"
-                        android:text="@string/btn_adbd_stop"
-                        android:textColor="@android:color/holo_orange_light"
-                        style="@style/Widget.Material3.Button.Outlined"
-                        android:layout_marginTop="8dp"/>
-                </GridLayout>
-
-                <GridLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:columnCount="2"
-                    android:rowCount="1"
-                    android:useDefaultMargins="true">
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/button_adb_start"
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_columnWeight="1"
-                        android:layout_row="0"
-                        android:layout_column="0"
-                        android:text="@string/btn_adb_start"
-                        android:textColor="@android:color/holo_orange_light"
-                        style="@style/Widget.Material3.Button.Outlined"
-                        android:layout_marginTop="8dp"/>
-
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/button_adb_kill"
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_columnWeight="1"
-                        android:layout_row="0"
-                        android:layout_column="1"
-                        android:text="@string/btn_adb_kill"
                         android:textColor="@android:color/holo_orange_light"
                         style="@style/Widget.Material3.Button.Outlined"
                         android:layout_marginTop="8dp"/>
@@ -216,6 +123,37 @@
                         android:layout_row="0"
                         android:layout_column="1"
                         android:text="@string/btn_adb_forward_adbhub"
+                        android:textColor="@android:color/holo_orange_light"
+                        style="@style/Widget.Material3.Button.Outlined"
+                        android:layout_marginTop="8dp"/>
+                </GridLayout>
+
+                <GridLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:columnCount="3"
+                    android:rowCount="1"
+                    android:useDefaultMargins="true">
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/button_adb_connect"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_columnWeight="1"
+                        android:layout_row="0"
+                        android:layout_column="0"
+                        android:text="@string/btn_adb_connect"
+                        android:textColor="@android:color/holo_orange_light"
+                        style="@style/Widget.Material3.Button.Outlined"
+                        android:layout_marginTop="8dp"/>
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/button_adb_disconnect"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_columnWeight="1"
+                        android:layout_row="0"
+                        android:layout_column="1"
+                        android:text="@string/btn_adb_disconnect"
                         android:textColor="@android:color/holo_orange_light"
                         style="@style/Widget.Material3.Button.Outlined"
                         android:layout_marginTop="8dp"/>
@@ -269,12 +207,25 @@
                     android:columnCount="2"
                     android:rowCount="2"
                     android:useDefaultMargins="true">
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/interactive_bootkali"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_column="0"
+                        android:layout_row="0"
+                        android:layout_columnSpan="2"
+                        android:text="@string/wearhunter_interactive_bootkali"
+                        android:textColor="@android:color/holo_orange_light"
+                        style="@style/Widget.Material3.Button.Outlined"
+                        android:layout_marginTop="8dp"/>
+
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/run_adb"
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_columnWeight="1"
-                        android:layout_row="0"
+                        android:layout_row="1"
                         android:layout_column="0"
                         android:text="@string/btn_run_adb"
                         android:textColor="@android:color/holo_orange_light"
@@ -286,21 +237,9 @@
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_columnWeight="1"
-                        android:layout_row="0"
+                        android:layout_row="1"
                         android:layout_column="1"
                         android:text="@string/btn_run_as_root_adb"
-                        android:textColor="@android:color/holo_orange_light"
-                        style="@style/Widget.Material3.Button.Outlined"
-                        android:layout_marginTop="8dp"/>
-
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/interactive_bootkali"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_column="0"
-                        android:layout_row="1"
-                        android:layout_columnSpan="2"
-                        android:text="@string/wearhunter_interactive_bootkali"
                         android:textColor="@android:color/holo_orange_light"
                         style="@style/Widget.Material3.Button.Outlined"
                         android:layout_marginTop="8dp"/>

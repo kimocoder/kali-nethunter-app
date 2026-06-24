@@ -12,4 +12,16 @@
     <item
         android:id="@+id/about"
         android:title="About"/>
+    <item
+        android:id="@+id/adbd_start"
+        android:title="ADBD Start"/>
+    <item
+        android:id="@+id/adbd_stop"
+        android:title="ADBD Stop"/>
+    <item
+        android:id="@+id/adb_start"
+        android:title="ADB Server Start"/>
+    <item
+        android:id="@+id/adb_kill"
+        android:title="ADB Server Kill"/>
 </menu>

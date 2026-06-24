@@ -40,6 +40,8 @@ import com.offsec.nethunter.utils.BootKali;
 import com.offsec.nethunter.utils.ShellExecuter;
 
 public class WearHunterFragment extends Fragment {
+    final ShellExecuter exe = new ShellExecuter();
+
     public static final String TAG = "WearHunterFragment";
     private static final String ARG_SECTION_NUMBER = "section_number";
     private Activity activity;
@@ -97,6 +99,10 @@ public class WearHunterFragment extends Fragment {
                     if (id == R.id.setup) { RunSetup(); return true; }
                     if (id == R.id.update) { RunUpdate(); return true; }
                     if (id == R.id.about) { RunAbout(); return true; }
+                    if (id == R.id.adbd_start) { RunADBDStart(); return true; }
+                    if (id == R.id.adbd_stop) { RunADBDStop(); return true; }
+                    if (id == R.id.adb_start) { RunADBStart(); return true; }
+                    if (id == R.id.adb_kill) { RunADBKill(); return true; }
 
                     return false;
                 }
@@ -192,6 +198,28 @@ public class WearHunterFragment extends Fragment {
                 .show();
     }
 
+    public void RunADBDStart() {
+        exe.RunAsRootOutput("start adbd");
+        showToast("ADBD Started!");
+    }
+
+    public void RunADBDStop() {
+        exe.RunAsRootOutput("stop adbd");
+        showToast("ADBD Stopped!");
+    }
+
+    public void RunADBStart() {
+        String cmd = "adb start-server";
+        new BootKali(cmd).run_bg();
+        showToast("ADB Server Started!");
+    }
+
+    public void RunADBKill() {
+        String cmd = "adb kill-server";
+        new BootKali(cmd).run_bg();
+        showToast("ADB Server Killed!");
+    }
+
     public static class TabsPagerAdapter extends FragmentStateAdapter {
         TabsPagerAdapter(@NonNull Fragment fragment) { super(fragment); }
         @NonNull @Override public Fragment createFragment(int position) { return new WearHunterFragment.MainFragment(); }
@@ -199,7 +227,6 @@ public class WearHunterFragment extends Fragment {
     }
 
     public static class MainFragment extends WearHunterFragment {
-        final ShellExecuter exe = new ShellExecuter();
         private TextView WatchIP;
         private TextView WatchPORT;
         private TextView WatchADBCMD;
@@ -262,36 +289,6 @@ public class WearHunterFragment extends Fragment {
                 } else {
                     showToast("Please ensure that Watch PORT are set!");
                 }
-            });
-
-            // Start ADBD
-            Button ADBDStartButton = rootView.findViewById(R.id.button_adbd_start);
-            ADBDStartButton.setOnClickListener(v -> {
-                exe.RunAsRootOutput("start adbd");
-                showToast("ADBD Started!");
-            });
-
-            // Stop ADBD
-            Button ADBDStopButton = rootView.findViewById(R.id.button_adbd_stop);
-            ADBDStopButton.setOnClickListener(v -> {
-                exe.RunAsRootOutput("stop adbd");
-                showToast("ADBD Stopped!");
-            });
-
-            // ADB Server Start
-            Button ADBServerStartButton = rootView.findViewById(R.id.button_adb_start);
-            ADBServerStartButton.setOnClickListener(v -> {
-                String cmd = "adb start-server";
-                new BootKali(cmd).run_bg();
-                showToast("ADB Server Started!");
-            });
-
-            // ADB Server Kill
-            Button ADBServerKillButton = rootView.findViewById(R.id.button_adb_kill);
-            ADBServerKillButton.setOnClickListener(v -> {
-                String cmd = "adb kill-server";
-                new BootKali(cmd).run_bg();
-                showToast("ADB Server Killed!");
             });
 
             // ADB TCPIP
