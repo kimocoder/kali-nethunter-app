@@ -245,7 +245,7 @@ public class ChrootManagerFragment extends Fragment {
                 // Autostart is now moved to settings
                 MenuItem autostart = menu.findItem(R.id.menu_autostart_chroot);
                 // Disable when NOT running (also covers not installed); Android grays out disabled items.
-                // TODO backup/restore should be available all the time
+                // TODO backup/restore should be available all the time, except backup when chroot is not installed
                 //if (backup != null) backup.setEnabled(isRunning);
                 //if (restore != null) restore.setEnabled(isRunning);
                 if (autostart != null) autostart.setChecked(sharedPreferences.getBoolean(SharePrefTag.CHROOT_AUTOSTART_SHAREPREF_TAG, true));
@@ -686,7 +686,6 @@ public class ChrootManagerFragment extends Fragment {
     private void setBackupChrootButton() {
         backupChrootButton.setOnClickListener(v -> {
             // Ensure external folders exist first
-            if (ensureNhFilesAndBackupDir()) return;
             AlertDialog ad = new MaterialAlertDialogBuilder(activity, R.style.DialogStyleCompat).create();
             EditText backupFullPathEditText = new EditText(activity);
             LinearLayout ll = new LinearLayout(activity);
@@ -874,7 +873,6 @@ public class ChrootManagerFragment extends Fragment {
     }
 
     private void setRestoreChrootButton() {
-        if (restoreChrootButton == null) return;
         restoreChrootButton.setOnClickListener(v -> {
             File targetDir = new File(NhPaths.CHROOT_PATH());
             boolean hasContent = targetDir.exists() && targetDir.isDirectory() && targetDir.listFiles() != null && Objects.requireNonNull(targetDir.listFiles()).length > 0;
