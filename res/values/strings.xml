@@ -97,12 +97,6 @@
     <string name="wifipumpkin_description">Start an Evil-Twin Access Point and intercept HTTP traffic. Custom captive portals, featuring mobile network upstream (rmnet_data*), internal wlan0 upstream, internal wlan0/wlan1 AP mode, and external adapters.</string>
     <string name="mana_hostapd_wpe">The hostapd configuration file used for 802.1x/EAP authentication attack (hostapd-wpe)  This is not used with MANA.</string>
     <string name="mana_hostapd_wpe_certs">Generate certificates (1st time only)</string>
-    <string name="mana_dhcpd">The dhcpd configuration file used by Mana.</string>
-    <string name="mana_dnsspoof">The dnsspoof configuration file used by Mana.</string>
-    <string name="mana_nat_full">The Mana script that does full NAT &amp; SSL interception.</string>
-    <string name="mana_nat_simple">The Mana script that does full NAT only.</string>
-    <string name="mana_nat_simple_bdf">The Mana script that does full NAT &amp; BDFProxy HTTP routing to port 8080.</string>
-    <string name="mana_bettercap_description">Route traffic to bettercap proxy with Mana-toolkit</string>
     <string name="hostapd_private_key">Private Key Password</string>
 
     <string name="select_language">Language</string>
