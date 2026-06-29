@@ -798,46 +798,6 @@ public class WifipumpkinFragment extends Fragment {
         }
     }
 
-    public static class BdfProxyConfigFragment extends Fragment {
-        private Context context;
-        private String configFilePath;
-
-        @Override
-        public void onCreate(@Nullable Bundle savedInstanceState) {
-            super.onCreate(savedInstanceState);
-            context = getContext();
-            configFilePath = NhPaths.APP_SD_FILES_PATH + "/configs/bdfproxy.cfg";
-        }
-
-        @Override
-        public View onCreateView(LayoutInflater inflater, ViewGroup container,
-                                 Bundle savedInstanceState) {
-            View rootView = inflater.inflate(R.layout.source_short, container, false);
-
-            String description = getResources().getString(R.string.bdfproxy_cfg);
-            TextView desc = rootView.findViewById(R.id.description);
-            desc.setText(description);
-            // use the good one?
-            Log.d("BDFPATH", configFilePath);
-            EditText source = rootView.findViewById(R.id.source);
-            ShellExecuter exe = new ShellExecuter();
-            exe.ReadFile_ASYNC(configFilePath, source);
-
-            Button button = rootView.findViewById(R.id.update);
-            button.setOnClickListener(v -> {
-                if (getView() == null) {
-                    return;
-                }
-                EditText source1 = getView().findViewById(R.id.source);
-                String newSource = source1.getText().toString();
-                ShellExecuter exe1 = new ShellExecuter();
-                exe1.SaveFileContents(newSource, configFilePath);
-                NhPaths.showMessage(context, "Source updated");
-            });
-            return rootView;
-        }
-    }
-
     public static class ManaStartNatSimpleBdfFragment extends Fragment {
         private Context context;
         private String configFilePath;
