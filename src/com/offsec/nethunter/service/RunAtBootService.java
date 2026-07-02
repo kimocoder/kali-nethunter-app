@@ -120,8 +120,10 @@ public class RunAtBootService extends Service {
             }
         }
         Boolean iswatch = getBaseContext().getPackageManager().hasSystemFeature(PackageManager.FEATURE_WATCH);
-        if (!iswatch) if (resultMsg.contains("Boot completed.")) {
-            exe.RunAsChrootOutput("update-alternatives --set iptables /usr/sbin/iptables-legacy; iptables-save | grep -v \"bpf\" > /sdcard/iptables-default; if ! grep -B1 \"# Completed\" /sdcard/iptables-default | head -n1 | grep -q \"COMMIT\"; then sed -i '/^# Completed/i COMMIT' /sdcard/iptables-default; fi");
+        if (!iswatch) {
+            if (resultMsg.contains("Boot completed.")) {
+                exe.RunAsChrootOutput("update-alternatives --set iptables /usr/sbin/iptables-legacy; iptables-save | grep -v \"bpf\" > /sdcard/iptables-default; if ! grep -B1 \"# Completed\" /sdcard/iptables-default | head -n1 | grep -q \"COMMIT\"; then sed -i '/^# Completed/i COMMIT' /sdcard/iptables-default; fi");
+            }
         }
 
         doNotification(

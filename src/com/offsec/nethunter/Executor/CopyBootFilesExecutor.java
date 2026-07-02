@@ -118,15 +118,18 @@ public class CopyBootFilesExecutor {
 
     private void onPreExecute() {
         // Symlink anyway, as some phones remove symlinks after reboot
-        SymlinkScriptsToSystemBin();
-        Symlink("bootkali");
-        Symlink("bootkali_bash");
-        Symlink("bootkali_init");
-        Symlink("bootkali_login");
-        Symlink("killkali");
-        Symlink("busybox_nh");
-        Symlink("curl");
-        Symlink("iw");
+        Boolean iswatch = prefs.getBoolean("running_on_wearos", false);
+        if (!iswatch) {
+            SymlinkScriptsToSystemBin();
+            Symlink("bootkali");
+            Symlink("bootkali_bash");
+            Symlink("bootkali_init");
+            Symlink("bootkali_login");
+            Symlink("killkali");
+            Symlink("busybox_nh");
+            Symlink("curl");
+            Symlink("iw");
+        }
         boolean filesCopied = prefs.getBoolean("files_copied", false);
         if (!filesCopied) {
             logDebug(TAG, "COPYING NEW FILES", null);
