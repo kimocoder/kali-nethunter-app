@@ -61,8 +61,8 @@ android {
         targetSdk 34
         //noinspection HighAppVersionCode
         //version=YYYYMMVVRR (Either "VV" for stable version OR "RR" for pre-release candidate (e.g. 0001 for rc1))
-        versionCode 2026061000   // 2026-06(Jun).10
-        versionName '2026.2'
+        versionCode 2026070100   // 2026-07(Jul).01
+        versionName '2026.2.1'
         multiDexEnabled true
         applicationId "com.offsec.nethunter"
 
