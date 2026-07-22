@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?>
+<com.google.android.material.card.MaterialCardView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_margin="8dp"
+    app:cardElevation="2dp"
+    app:cardCornerRadius="8dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="12dp">
+
+        <TextView
+            android:id="@+id/tv_loot_filename"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="loot_20260722_153045.tar.gz"
+            android:textAppearance="?attr/textAppearanceTitleMedium"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/tv_loot_size"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Size: 1.2 MB"
+            android:textAppearance="?attr/textAppearanceBodySmall"
+            android:layout_marginTop="4dp" />
+
+        <TextView
+            android:id="@+id/tv_loot_date"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Collected: 2026-07-22 15:30:45"
+            android:textAppearance="?attr/textAppearanceBodySmall" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginTop="8dp">
+
+            <Button
+                android:id="@+id/btn_view_archive"
+                style="?android:attr/buttonStyleSmall"
+                android:layout_width="0dp"
+                android:layout_weight="1"
+                android:layout_height="wrap_content"
+                android:text="View Contents" />
+
+            <Button
+                android:id="@+id/btn_delete_archive"
+                style="?android:attr/buttonStyleSmall"
+                android:layout_width="0dp"
+                android:layout_weight="1"
+                android:layout_height="wrap_content"
+                android:text="Delete"
+                android:textColor="@color/orange" />
+        </LinearLayout>
+    </LinearLayout>
+</com.google.android.material.card.MaterialCardView>

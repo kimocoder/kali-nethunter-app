@@ -109,7 +109,15 @@ public class AppNavHomeActivity extends AppCompatActivity implements KaliGPSUpda
             @Override
             public void handleOnBackPressed() {
                 if (isBackPressEnabled) {
+                    FragmentManager fm = getSupportFragmentManager();
+                    if (fm.getBackStackEntryCount() > (titles.size() - 1)) {
+                        fm.popBackStack();
+                        return;
+                    }
                     if (titles.size() > 1) {
+                        if (fm.getBackStackEntryCount() > 0) {
+                            fm.popBackStack();
+                        }
                         titles.pop();
                         mTitle = titles.peek();
                         // update menu selection and action bar
@@ -423,6 +431,15 @@ public class AppNavHomeActivity extends AppCompatActivity implements KaliGPSUpda
         }
     }
 
+    private void hideMenuItemById(int id) {
+        if (navigationView == null) return;
+        Menu menu = navigationView.getMenu();
+        MenuItem item = menu.findItem(id);
+        if (item != null) {
+            item.setVisible(false);
+        }
+    }
+
     @ColorInt
     private int safeGetColor(@ColorRes int colorRes, int fallbackArgb) {
         try {
@@ -470,9 +487,12 @@ public class AppNavHomeActivity extends AppCompatActivity implements KaliGPSUpda
         prefs.edit().putBoolean("snowfall_enabled", false).apply();
 
         // inapp term enable
-        Boolean inappterm;
-        inappterm = prefs.getBoolean("inapp_terminal_enabled", false);
-        if (!inappterm) hideMenuItemIfExists(2);
+        //Boolean inappterm;
+        //inappterm = prefs.getBoolean("inapp_terminal_enabled", false);
+        //if (!inappterm) hideMenuItemById(R.id.terminal_item);
+
+        // hide kernel tab until fixed
+        hideMenuItemById(R.id.kernel_item);
 
         String model = Build.HARDWARE;
         Boolean snowfall;
@@ -480,20 +500,20 @@ public class AppNavHomeActivity extends AppCompatActivity implements KaliGPSUpda
             snowfall = prefs.getBoolean("snowfall_enabled", false);
 
             // Safe index-based hiding
-            hideMenuItemIfExists(2);
-            hideMenuItemIfExists(3);
-            hideMenuItemIfExists(4);
-            hideMenuItemIfExists(5);
-            if (model.equals("catfish") || model.equals("catshark") || model.equals("catshark-4g")) hideMenuItemIfExists(9);
-            hideMenuItemIfExists(10);
-            hideMenuItemIfExists(15);
-            hideMenuItemIfExists(16);
-            hideMenuItemIfExists(19);
-            hideMenuItemIfExists(21);
-            hideMenuItemIfExists(22);
-            hideMenuItemIfExists(23);
-            hideMenuItemIfExists(24);
-            hideMenuItemIfExists(25);
+            //hideMenuItemById(R.id.terminal_item);
+            hideMenuItemById(R.id.settings_item);
+            hideMenuItemById(R.id.kernel_item);
+            hideMenuItemById(R.id.modules_item);
+            if (model.equals("catfish") || model.equals("catshark") || model.equals("catshark-4g")) hideMenuItemById(R.id.vnc_item);
+            hideMenuItemById(R.id.audio_item);
+            hideMenuItemById(R.id.wifipumpkin_item);
+            hideMenuItemById(R.id.eviltwin_item);
+            hideMenuItemById(R.id.set_item);
+            hideMenuItemById(R.id.mpc_item);
+            hideMenuItemById(R.id.searchsploit_item);
+            hideMenuItemById(R.id.pineapple_item);
+            hideMenuItemById(R.id.gps_item);
+            hideMenuItemById(R.id.can_item);
         } else {
             snowfall = prefs.getBoolean("snowfall_enabled", true);
         }
@@ -505,10 +525,7 @@ public class AppNavHomeActivity extends AppCompatActivity implements KaliGPSUpda
 
         // Disable USB arsenal for devices without ConfigFS support
         if (!new File("/config/usb_gadget/g1").exists()) {
-            Menu menu = navigationView.getMenu();
-            if (menu.size() > 7) {
-                menu.getItem(7).setVisible(false);
-            }
+            hideMenuItemById(R.id.usbarsenal_item);
         }
 
         // Header
