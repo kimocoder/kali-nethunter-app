@@ -396,6 +396,15 @@ public class UsbExfiltrationFragment extends Fragment {
         new Thread(() -> {
             String selectedTarget = spTargetOS.getSelectedItem().toString().equals("Linux") ? "lnx" : "win";
 
+            // Detect RNDIS interface IP
+            String rndisIp = detectRndisIp();
+            if (rndisIp == null || rndisIp.isEmpty()) {
+                appendLog("[-] Warning: Could not detect RNDIS IP, using default 192.168.137.1");
+                rndisIp = "192.168.137.1";
+            } else {
+                appendLog("[+] Detected RNDIS IP: " + rndisIp);
+            }
+
             // Copy selected script to loot.sh or loot.ps1
             String scriptDir = selectedTarget.equals("lnx") ? "scripts_linux" : "scripts_windows";
             String selectedScript = selectedTarget.equals("lnx") ? selectedLinuxScript : selectedWindowsScript;
@@ -405,6 +414,10 @@ public class UsbExfiltrationFragment extends Fragment {
                 String srcPath = NhPaths.SD_PATH + "/nh_files/usb_exfil/" + scriptDir + "/" + selectedScript;
                 String dstPath = NhPaths.SD_PATH + "/nh_files/usb_exfil/" + targetScript;
                 exe.RunAsRoot("cp " + srcPath + " " + dstPath);
+
+                // Inject the detected RNDIS IP into the script
+                injectIpIntoScript(dstPath, rndisIp);
+
                 appendLog("[*] Using script: " + selectedScript);
             } else if (selectedScript.equals("Custom")) {
                 appendLog("[*] Using custom script");
@@ -861,6 +874,76 @@ public class UsbExfiltrationFragment extends Fragment {
             super(view);
             tvFileName = view.findViewById(R.id.tv_file_name);
             tvFileSize = view.findViewById(R.id.tv_file_size);
+        }
+    }
+
+    /**
+     * Detects the RNDIS interface IP address by checking common interface names.
+     * Returns the IP address of the first RNDIS-like interface found.
+     */
+    private String detectRndisIp() {
+        // Common RNDIS interface names across Android versions
+        String[] rndisInterfaces = {"rndis0", "usb0", "eth0", "wlan0"};
+
+        for (String iface : rndisInterfaces) {
+            String cmd = "ip addr show " + iface + " 2>/dev/null | grep 'inet ' | awk '{print $2}' | cut -d'/' -f1";
+            String result = exe.RunAsRootOutput(cmd);
+
+            if (result != null && !result.trim().isEmpty() && !result.contains("error")) {
+                // Validate it's a valid IP (starts with 192.168 typically for RNDIS)
+                String ip = result.trim();
+                if (ip.matches("\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}")) {
+                    return ip;
+                }
+            }
+        }
+
+        // Fallback: try to find any interface with 192.168.x.x
+        String cmd = "ip addr | grep 'inet 192.168' | awk '{print $2}' | cut -d'/' -f1 | head -n1";
+        String result = exe.RunAsRootOutput(cmd);
+        if (result != null && !result.trim().isEmpty()) {
+            return result.trim();
+        }
+
+        return null;
+    }
+
+    /**
+     * Injects the detected RNDIS IP into the script by replacing hardcoded IP addresses.
+     */
+    private void injectIpIntoScript(String scriptPath, String rndisIp) {
+        try {
+            // Read the script
+            File scriptFile = new File(scriptPath);
+            if (!scriptFile.exists()) {
+                appendLog("[-] Script file not found: " + scriptPath);
+                return;
+            }
+
+            BufferedReader reader = new BufferedReader(new FileReader(scriptFile));
+            StringBuilder content = new StringBuilder();
+            String line;
+            while ((line = reader.readLine()) != null) {
+                content.append(line).append("\n");
+            }
+            reader.close();
+
+            String scriptContent = content.toString();
+
+            // Replace hardcoded IPs with detected RNDIS IP
+            // Handle both Linux shell scripts and PowerShell scripts
+            scriptContent = scriptContent.replaceAll("192\\.168\\.137\\.1", rndisIp);
+            scriptContent = scriptContent.replaceAll("SERVER_IP=\"[^\"]*\"", "SERVER_IP=\"" + rndisIp + "\"");
+            scriptContent = scriptContent.replaceAll("\\$SERVER_IP = \"[^\"]*\"", "\\$SERVER_IP = \"" + rndisIp + "\"");
+
+            // Write back to file
+            FileWriter writer = new FileWriter(scriptFile);
+            writer.write(scriptContent);
+            writer.close();
+
+            appendLog("[+] Injected IP " + rndisIp + " into script");
+        } catch (IOException e) {
+            appendLog("[-] Error injecting IP into script: " + e.getMessage());
         }
     }
 }
