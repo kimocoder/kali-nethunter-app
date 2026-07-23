@@ -418,13 +418,14 @@ public class UsbExfiltrationFragment extends Fragment {
             appendLog("[*] RNDIS should be active.");
             appendLog("[*] Python listener should be running in chroot.");
 
-            // NOW detect RNDIS IP after the interface is configured
-            String rndisIp = detectRndisIp();
+            // Extract gateway IP from usbtethering logs
+            // The usbtethering script logs the gateway IP it configured
+            String rndisIp = extractGatewayIpFromLogs();
             if (rndisIp == null || rndisIp.isEmpty()) {
-                appendLog("[-] Warning: Could not detect RNDIS IP, using default 192.168.137.1");
+                appendLog("[-] Warning: Could not extract gateway IP from logs, using default 192.168.137.1");
                 rndisIp = "192.168.137.1";
             } else {
-                appendLog("[+] Detected RNDIS IP: " + rndisIp);
+                appendLog("[+] Gateway IP from usbtethering: " + rndisIp);
             }
 
             // Store for HID injection
@@ -861,31 +862,24 @@ public class UsbExfiltrationFragment extends Fragment {
     }
 
     /**
-     * Detects the RNDIS interface IP address by checking common interface names.
-     * Returns the IP address of the first RNDIS-like interface found.
+     * Extracts the gateway IP from usbtethering logs.
+     * The usbtethering script logs "IP_GW: <ip>" which is the gateway IP we need.
      */
-    private String detectRndisIp() {
-        // Common RNDIS interface names across Android versions
-        String[] rndisInterfaces = {"rndis0", "usb0", "eth0", "wlan0"};
-
-        for (String iface : rndisInterfaces) {
-            String cmd = "ip addr show " + iface + " 2>/dev/null | grep 'inet ' | awk '{print $2}' | cut -d'/' -f1";
+    private String extractGatewayIpFromLogs() {
+        try {
+            // Read the log file and look for IP_GW line
+            String cmd = "grep 'IP_GW:' " + LOG_FILE + " | tail -1 | awk '{print $2}'";
             String result = exe.RunAsRootOutput(cmd);
 
-            if (result != null && !result.trim().isEmpty() && !result.contains("error")) {
-                // Validate it's a valid IP (starts with 192.168 typically for RNDIS)
+            if (result != null && !result.trim().isEmpty()) {
                 String ip = result.trim();
+                // Validate it's a valid IP
                 if (ip.matches("\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}")) {
                     return ip;
                 }
             }
-        }
-
-        // Fallback: try to find any interface with 192.168.x.x
-        String cmd = "ip addr | grep 'inet 192.168' | awk '{print $2}' | cut -d'/' -f1 | head -n1";
-        String result = exe.RunAsRootOutput(cmd);
-        if (result != null && !result.trim().isEmpty()) {
-            return result.trim();
+        } catch (Exception e) {
+            // Fall through to return null
         }
 
         return null;
