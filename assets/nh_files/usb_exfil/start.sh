@@ -96,4 +96,5 @@ else
 fi
 
 # Execute usbtethering as root in background (Forever mode for persistent DHCP)
-su -c "$TETHER_SCRIPT -F -o wlan0 -i $USB_IFACE -A 192.168.137.10 -B 192.168.137.10 -C 192.168.137.1 -D 255.255.255.0" >> /sdcard/nh_files/usb_exfil/usb_exfil.log 2>&1 &
+# Redirect stdin from /dev/null to prevent EOF from killing the forever loop
+nohup sh "$TETHER_SCRIPT" -F -o wlan0 -i "$USB_IFACE" -A 192.168.137.10 -B 192.168.137.10 -C 192.168.137.1 -D 255.255.255.0 </dev/null >> /sdcard/nh_files/usb_exfil/usb_exfil.log 2>&1 &
