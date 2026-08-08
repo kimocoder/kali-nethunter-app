@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <LinearLayout
+        android:padding="16dp"
+        android:orientation="vertical"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="MIFARE Classic Block Editor"
+            android:textStyle="bold"
+            android:textSize="18sp"/>
+
+        <EditText
+            android:id="@+id/keyInput"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Key (12 hex chars)"
+            android:layout_marginTop="8dp"
+            android:inputType="textNoSuggestions|textVisiblePassword"/>
+
+        <Spinner
+            android:id="@+id/keyTypeSpin"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"/>
+
+        <Spinner
+            android:id="@+id/sectorSpin"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"/>
+
+        <Spinner
+            android:id="@+id/blockSpin"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"/>
+
+        <Button
+            android:id="@+id/authBtn"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Authenticate"
+            android:layout_marginTop="12dp"/>
+
+        <Button
+            android:id="@+id/readBtn"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Read Block"/>
+
+        <Button
+            android:id="@+id/writeBtn"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Write Block"/>
+
+        <CheckBox
+            android:id="@+id/allowTrailerWrite"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Allow sector trailer writes"
+            android:layout_marginTop="8dp"/>
+
+        <EditText
+            android:id="@+id/blockData"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Block Data (HEX)"
+            android:layout_marginTop="8dp"
+            android:inputType="textNoSuggestions|textVisiblePassword"/>
+
+        <TextView
+            android:id="@+id/blockMeta"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="No block selected"
+            android:textSize="12sp"
+            android:paddingTop="8dp"/>
+
+        <TextView
+            android:id="@+id/blockResult"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textIsSelectable="true"
+            android:paddingTop="8dp"/>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="⚠ Writing sector trailers incorrectly can permanently lock cards."
+            android:textColor="#FF4444"
+            android:paddingTop="12dp"/>
+
+    </LinearLayout>
+</ScrollView>

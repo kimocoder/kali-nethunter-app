@@ -1,6 +1,7 @@
 package com.offsec.nethunter;
 
 import android.Manifest;
+import android.app.PendingIntent;
 import android.content.BroadcastReceiver;
 import android.content.ComponentName;
 import android.content.Context;
@@ -10,6 +11,7 @@ import android.content.ServiceConnection;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.content.res.Resources;
+import android.nfc.NfcAdapter;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.IBinder;
@@ -94,11 +96,23 @@ public class AppNavHomeActivity extends AppCompatActivity implements KaliGPSUpda
     public static MenuItem customCMDitem;
     private final ShellExecuter exe = new ShellExecuter();
     private volatile boolean rootViewInitialized = false;
+
     private Thread permissionWaitThread;
+    private NfcAdapter nfcAdapter;
+    private PendingIntent nfcPendingIntent;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        nfcAdapter = NfcAdapter.getDefaultAdapter(this);
+
+        Intent nfcIntent = new Intent(this, getClass());
+        nfcIntent.addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP);
+
+        nfcPendingIntent = PendingIntent.getActivity(
+                this, 0, nfcIntent, PendingIntent.FLAG_MUTABLE
+        );
 
         // Initiate the NhPaths singleton class, and it will then keep living until the app dies.
         // Also with its sharepreference listener registered, the CHROOT_PATH variable can be updated immediately on sharepreference changes.
@@ -407,6 +421,16 @@ public class AppNavHomeActivity extends AppCompatActivity implements KaliGPSUpda
     @Override
     protected void onResume() {
         super.onResume();
+
+        if (nfcAdapter != null) {
+            nfcAdapter.enableForegroundDispatch(
+                    this,
+                    nfcPendingIntent,
+                    null,
+                    null
+            );
+        }
+
         // If user just granted MANAGE_EXTERNAL_STORAGE from Settings, finalize the SD sync without re-running full executor
         if (copyBootFilesExecutor != null) {
             copyBootFilesExecutor.resumePendingSyncIfPermitted();
@@ -440,12 +464,36 @@ public class AppNavHomeActivity extends AppCompatActivity implements KaliGPSUpda
         }
     }
 
+    @Override
+    protected void onPause() {
+        super.onPause();
+        if (nfcAdapter != null) {
+            nfcAdapter.disableForegroundDispatch(this);
+        }
+    }
+
     @ColorInt
     private int safeGetColor(@ColorRes int colorRes, int fallbackArgb) {
         try {
             return ResourcesCompat.getColor(getResources(), colorRes, getTheme());
         } catch (Resources.NotFoundException e) {
             return fallbackArgb;
+        }
+    }
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+
+        if (intent == null) return;
+
+        String action = intent.getAction();
+        if (NfcAdapter.ACTION_TAG_DISCOVERED.equals(action) ||
+                NfcAdapter.ACTION_TECH_DISCOVERED.equals(action) ||
+                NfcAdapter.ACTION_NDEF_DISCOVERED.equals(action)) {
+
+            // Forward NFC intent to NFCFragment
+            NFCFragment.dispatchIntent(this, intent);
         }
     }
 
@@ -697,6 +745,8 @@ public class AppNavHomeActivity extends AppCompatActivity implements KaliGPSUpda
             changeFragment(fragmentManager, WPSFragment.newInstance(itemId));
         } else if (itemId == R.id.bt_item) {
             changeFragment(fragmentManager, BTFragment.newInstance(itemId));
+        } else if (itemId == R.id.nfc_item) {
+            changeFragment(fragmentManager, NFCFragment.newInstance(itemId));
         } else if (itemId == R.id.audio_item) {
             changeFragment(fragmentManager, com.offsec.nethunter.AudioFragment.newInstance(itemId));
         } else if (itemId == R.id.macchanger_item) {
