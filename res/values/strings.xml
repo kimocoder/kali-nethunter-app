@@ -492,8 +492,8 @@
     <string name="launch_kismet">Launch Kismet</string>
     <string name="full_path_to_where_you_want_to_save_the_database">Full path to where you want to save the database:</string>
     <string name="full_path_of_the_db_file_from_where_you_want_to_restore2">Full path of the db file from where you want to restore:</string>
-    <string name="download_latest_kali_chroot_from_official_image">DOWNLOAD LATEST KALI CHROOT FROM OFFICIAL IMAGE</string>
-    <string name="download_latest_kali_chroot_from_official_image2">DOWNLOAD LATEST KALI CHROOT FROM OFFICIAL IMAGE</string>
+    <string name="download_latest_kali_chroot_from_official_image">Download latest Kali chroot from official image</string>
+    <string name="download_latest_kali_chroot_from_official_image2">Download latest Kali chroot from official image</string>
     <string name="type_the_full_path_of_your_kali_chroot_tarball_file">Type the full path of your Kali Chroot tarball file:</string>
     <string name="long_press_to_manage_a_command_dont_forget_to_backup_use_double_quotes_if_needed">Long press to manage a command, dont forget to backup!. Use double quotes if needed.</string>
     <string name="search_command">search command</string>
@@ -637,8 +637,8 @@
     <string name="wifi_status">wifi_status</string>
 
     <!-- CHROOTMGR -->
-    <string name="chrootmgr_download_latest">DOWNLOAD LATEST KALI CHROOT</string>
-    <string name="chrootmgr_install_from_local_storage">INSTALL FROM LOCAL STORAGE</string>
+    <string name="chrootmgr_download_latest">Download latest Kali chroot</string>
+    <string name="chrootmgr_install_from_local_storage">Install from local storage</string>
 
     <!-- MODULES -->
     <string name="modules_path">Modules path</string>
@@ -686,7 +686,7 @@
     <!-- WIFI PUMPKIN3 -->
     <string name="wp3_supported">Supported</string>
     <string name="wp3_not_supported">Not supported</string>
-    
+
     <!-- EvilTwin -->
     <string name="drawertitleeviltwin">Evil Twin</string>
     <string name="eviltwin_setup_title">Evil Twin Setup</string>
