@@ -296,6 +296,7 @@
     <string name="drawertitlewifipumpkin">Wifipumpkin</string>
     <string name="drawertitlewps">WPS Attacks</string>
     <string name="drawertitlebt">Bluetooth Arsenal</string>
+    <string name="drawertitlenfc">NFC Arsenal</string>
     <string name="drawertitlenmap">Nmap Scan</string>
     <string name="drawertitlempc">Metasploit Payload Generator</string>
     <string name="drawertitlesearchsploit">SearchSploit</string>
@@ -1455,6 +1456,17 @@
         <item>This is a demonstration of total control.</item>
         <item>Your system is no longer yours.</item>
     </string-array>
+
+    <!-- NFC -->
+    <string name="nfc_main_desc">
+        NFC Arsenal allows you to scan, read, write, dump, and analyze NFC tags.
+        Advanced features integrate with Kali NetHunter for penetration testing.
+    </string>
+
+    <string name="nfc_tools_desc">
+        Install and manage NFC-related tools inside the Kali NetHunter chroot
+        such as libnfc, mfoc, mfcuk, and nfc-tools.
+    </string>
 
     <!-- Terminal Setup Dialog -->
     <string name="terminal_setup_icon_desc">Setup</string>
