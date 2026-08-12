@@ -640,7 +640,7 @@ public class EvilTwinFragment extends Fragment {
     }
 
     private void RunSetup() {
-        String command = "echo -ne \"\\033]0;Evil Twin Setup\\007\" && clear;apt update --fix-missing && apt install -y aircrack-ng hostapd dnsmasq php python3 python3-pip ethtool dnschef iw tshark xtables-addons-common python3-flask python3-requests && if [ ! -d /eviltwin ]; then git clone https://github.com/dr1408/eviltwin /eviltwin; else cd /eviltwin && git pull; fi";
+        String command = "echo -ne \"\\033]0;Evil Twin Setup\\007\" && clear;apt update --fix-missing && apt install -y aircrack-ng hostapd dnsmasq php python3 python3-pip ethtool dnschef iw tshark xtables-addons-common python3-flask python3-requests && git clone https://github.com/dr1408/eviltwin /eviltwin";
         check_which_cmd(command);
         sharedpreferences.edit().remove("eviltwin_setup_done").apply();
     }
