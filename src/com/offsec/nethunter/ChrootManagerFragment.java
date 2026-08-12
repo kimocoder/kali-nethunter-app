@@ -594,7 +594,7 @@ public class ChrootManagerFragment extends Fragment {
         removeChrootButton.setOnClickListener(v -> new MaterialAlertDialogBuilder(activity, R.style.DialogStyleCompat)
                 .setTitle("Warning!")
                 .setMessage("Remove folder?\n" + NhPaths.CHROOT_PATH())
-                .setPositiveButton("Yes", (d,i)-> new MaterialAlertDialogBuilder(activity, R.style.DialogStyleCompat)
+                .setPositiveButton("I'm sure.", (d,i)-> new MaterialAlertDialogBuilder(activity, R.style.DialogStyleCompat)
                         .setTitle("Last chance")
                         .setMessage("This cannot be undone.")
                         .setPositiveButton("Delete",(dd,ii)-> {
