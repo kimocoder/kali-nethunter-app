@@ -58,6 +58,8 @@
     <string name="usbarsenal_imagemounter_description">Image Mounter can be used only if the USB function \"mass_storage\" has been enabled</string>
     <string name="usbarsenal_networktethering_header">USB Network Tethering</string>
     <string name="usbarsenal_networktethering_description">USB NetWork Tethering can be used only if the USB function \"rndis\" or \"acmecm\" has been enabled</string>
+    <string name="usbarsenal_usbexfiltration_header">USB Exfiltration</string>
+    <string name="usbarsenal_usbexfiltration_open">Open USB Exfiltration</string>
     <string-array name="usbarsenal_target_platform">
         <item>Windows</item>
         <item>Linux</item>
@@ -1415,6 +1417,7 @@
     <string name="usb_linux_file_cd_storage_gadget">Linux File-CD/Stor gadget (kernel default)</string>
     <string name="usb_full_path_db_save">Full path to where you want to save the database:</string>
     <string name="usb_full_path_db_restore">Full path of the db file from where you want to restore:</string>
+    <string name="usb_exfil_description">Deploys an HTTP server and raw TCP listener to exfiltrate files from a connected USB target via RNDIS.</string>
     <string name="wp3_ap_mode_supported">Supported</string>
     <string name="wp3_ap_mode_not_supported">Not supported</string>
     <string name="audio_permission_denied_cannot_start_playback">Audio permission denied. Cannot start playback.</string>
