@@ -1,0 +1,140 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp">
+
+        <!-- ================= Status / Output ================= -->
+
+        <TextView
+            android:id="@+id/nfcOutput"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Idle. Select an operation."
+            android:textSize="14sp"
+            android:textIsSelectable="true"
+            android:padding="12dp"
+            android:background="@drawable/background"
+            android:layout_marginBottom="16dp" />
+        
+        <!-- Countdown-->
+        <TextView
+            android:id="@+id/nfcCountdown"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text=""
+            android:textSize="10sp"
+            android:textColor="#AAAAAA"
+            android:layout_marginBottom="12dp"/>
+
+        <!-- ================= Read Section ================= -->
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Read NFC Tag"
+            android:textStyle="bold"
+            android:textSize="16sp"
+            android:layout_marginBottom="8dp" />
+
+        <Button
+            android:id="@+id/readTag"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Read" />
+
+        <!-- ================= Divider ================= -->
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:layout_marginVertical="20dp"
+            android:background="#444444" />
+
+        <!-- ================= Write Section ================= -->
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Write NFC Tag"
+            android:textStyle="bold"
+            android:textSize="16sp"
+            android:layout_marginBottom="8dp" />
+
+        <!-- Write Input -->
+
+        <EditText
+            android:id="@+id/writeData"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Text to write (NDEF)"
+            android:inputType="textMultiLine"
+            android:minLines="2"
+            android:padding="10dp"
+            android:layout_marginBottom="12dp" />
+
+        <!-- Write Button -->
+
+        <Button
+            android:id="@+id/writeTag"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Write" />
+
+        <!-- ================= External Reader Section ================= -->
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:layout_marginVertical="20dp"
+            android:background="#444444" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="External NFC Adapter"
+            android:textStyle="bold"
+            android:textSize="16sp"
+            android:layout_marginBottom="8dp" />
+
+        <TextView
+            android:id="@+id/externalReaderStatus"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Checking external adapter..."
+            android:textIsSelectable="true"
+            android:textSize="12sp"
+            android:layout_marginBottom="12dp" />
+
+        <Button
+            android:id="@+id/externalScan"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Scan with External Adapter" />
+
+        <Button
+            android:id="@+id/externalDump"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Dump MIFARE with External Adapter"
+            android:layout_marginTop="8dp" />
+
+        <!-- ================= Footer Note ================= -->
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Note: Onboard writing is limited to NDEF-compatible, writable tags. External adapter workflows run in Kali terminal sessions."
+            android:textSize="12sp"
+            android:textColor="#AAAAAA"
+            android:layout_marginTop="20dp" />
+
+    </LinearLayout>
+
+</ScrollView>
