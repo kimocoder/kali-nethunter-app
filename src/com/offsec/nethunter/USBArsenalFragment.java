@@ -217,6 +217,7 @@ public class USBArsenalFragment extends Fragment {
         reloadMountStateButton              = view.findViewById(R.id.f_usbarsenal_imgbtn_reloadMountStatus);
         saveUSBFunctionConfigButton         = view.findViewById(R.id.f_usbarsenal_btn_saveusbfuncswitch);
         saveUSBNetworkTetheringConfigButton = view.findViewById(R.id.f_usbarsenal_btn_saveusbnetworktethering);
+        Button openUsbExfiltrationButton    = view.findViewById(R.id.f_usbarsenal_btn_openusbexfiltration);
         CheckBox    readOnlyCheckBox        = view.findViewById(R.id.f_usbarsenal_chkbox_ReadOrWrite);
         usbStatusTextView                   = view.findViewById(R.id.f_usbarsenal_tv_current_usb_state);
         mountedImageTextView                = view.findViewById(R.id.f_usbarsenal_tv_mount_state);
@@ -471,6 +472,12 @@ public class USBArsenalFragment extends Fragment {
                 NhPaths.showMessage(context, "Saved.");
             }
         });
+
+        openUsbExfiltrationButton.setOnClickListener(v ->
+                getParentFragmentManager().beginTransaction()
+                        .replace(R.id.container, UsbExfiltrationFragment.newInstance())
+                        .addToBackStack(null)
+                        .commit());
 
         usbArsenalHandlerThread.setOnShellExecuterFinishedListener((resultObject, actionCode) -> {
             if (getView() != null) {

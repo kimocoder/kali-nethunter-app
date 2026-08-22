@@ -81,6 +81,10 @@
             android:icon="@drawable/ic_action_bluetooth"
             android:title="@string/drawertitlebt" />
         <item
+            android:id="@+id/nfc_item"
+            android:icon="@drawable/ic_action_nfc"
+            android:title="@string/drawertitlenfc" />
+        <item
             android:id="@+id/set_item"
             android:icon="@drawable/ic_baseline_portrait_24"
             android:title="@string/drawertitleset" />

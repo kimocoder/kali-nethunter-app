@@ -4,6 +4,9 @@ project(native-lib)
 # Build the native shared library used for PTY operations.
 add_library(native-lib SHARED native-lib.cpp)
 
+# Align ELF load segments to 16KB pages, required for Android 15+ devices.
+target_link_options(native-lib PRIVATE "-Wl,-z,max-page-size=16384")
+
 find_library(log-lib log)
 find_library(m-lib m)
 

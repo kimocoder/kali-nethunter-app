@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <item
+        android:id="@+id/action_install_nfc_tools"
+        android:title="Install NFC Tools"
+        android:icon="@drawable/ic_download"
+        android:showAsAction="never"/>
+
+    <item
+        android:id="@+id/action_nfc_info"
+        android:title="Module Info Info"
+        android:showAsAction="never"/>
+
+</menu>

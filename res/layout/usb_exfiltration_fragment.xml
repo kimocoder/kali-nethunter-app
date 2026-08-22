@@ -1,0 +1,238 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical">
+
+    <!-- Header -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@color/cardview_shadow_start_color"
+        android:orientation="horizontal">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_margin="16dp"
+            android:text="USB Exfiltration"
+            android:textColor="@android:color/background_light"
+            android:textSize="20sp" />
+    </LinearLayout>
+
+    <!-- Content -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:padding="16dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:layout_marginBottom="8dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Target OS:"
+                android:textStyle="bold"/>
+
+            <Spinner
+                android:id="@+id/sp_target_os"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:spinnerMode="dropdown"/>
+        </LinearLayout>
+
+        <!-- Linux Script Selection -->
+        <LinearLayout
+            android:id="@+id/ll_linux_script_container"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:layout_marginBottom="8dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Linux Loot Script:"
+                android:textStyle="bold"/>
+
+            <com.google.android.material.textfield.TextInputLayout
+                android:id="@+id/til_linux_script"
+                style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="Select script">
+
+                <AutoCompleteTextView
+                    android:id="@+id/actv_linux_script"
+                    style="@style/Widget.Material3.AutoCompleteTextView.OutlinedBox"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:inputType="none"
+                    android:importantForAutofill="no" />
+            </com.google.android.material.textfield.TextInputLayout>
+        </LinearLayout>
+
+        <!-- Windows Script Selection -->
+        <LinearLayout
+            android:id="@+id/ll_windows_script_container"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:layout_marginBottom="8dp"
+            android:visibility="gone">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Windows Loot Script:"
+                android:textStyle="bold"/>
+
+            <com.google.android.material.textfield.TextInputLayout
+                android:id="@+id/til_windows_script"
+                style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="Select script">
+
+                <AutoCompleteTextView
+                    android:id="@+id/actv_windows_script"
+                    style="@style/Widget.Material3.AutoCompleteTextView.OutlinedBox"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:inputType="none"
+                    android:importantForAutofill="no" />
+            </com.google.android.material.textfield.TextInputLayout>
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginBottom="8dp">
+
+            <Button
+                android:id="@+id/btn_exfil_start"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Start"
+                style="?android:attr/buttonStyleSmall"/>
+
+            <Button
+                android:id="@+id/btn_exfil_stop"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Stop"
+                style="?android:attr/buttonStyleSmall"/>
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:layout_marginBottom="8dp"
+            android:layout_marginTop="8dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Payload Trigger:"
+                android:textStyle="bold"/>
+
+            <Spinner
+                android:id="@+id/sp_launch_keys"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:spinnerMode="dropdown"/>
+        </LinearLayout>
+
+        <Switch
+            android:id="@+id/sw_stealth_mode"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Stealth Mode (Hide Terminal)"
+            android:checked="true"
+            android:layout_marginBottom="8dp"/>
+
+        <Switch
+            android:id="@+id/sw_auto_inject"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Auto-Inject Payload (on DHCP Lease)"
+            android:checked="true"
+            android:layout_marginBottom="8dp"/>
+
+        <Button
+            android:id="@+id/btn_exfil_ducky"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Inject Ducky Payload (HID)"/>
+
+        <Button
+            android:id="@+id/btn_view_loot"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="View Collected Loot"
+            android:layout_marginTop="8dp"/>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginTop="16dp"
+            android:layout_marginBottom="8dp"
+            android:gravity="center_vertical">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Execution Logs:"
+                android:textSize="18sp"/>
+
+            <Button
+                android:id="@+id/btn_copy_logs"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Copy Logs"
+                android:layout_marginEnd="8dp"
+                style="?android:attr/buttonStyleSmall"/>
+
+            <Button
+                android:id="@+id/btn_clear_logs"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Clear Logs"
+                style="?android:attr/buttonStyleSmall"/>
+        </LinearLayout>
+
+        <ScrollView
+            android:id="@+id/sv_logs"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:background="#222222"
+            android:scrollbars="vertical"
+            android:fadeScrollbars="false"
+            android:scrollbarThumbVertical="@android:color/darker_gray"
+            android:fillViewport="true">
+
+            <TextView
+                android:id="@+id/tv_logs"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:fontFamily="monospace"
+                android:text="Ready..."
+                android:textColor="#00FF00"
+                android:padding="8dp"/>
+        </ScrollView>
+
+    </LinearLayout>
+</LinearLayout>

