@@ -1,0 +1,141 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp">
+
+        <!-- Header Description  -->
+        <TextView
+            android:id="@+id/nfcDesc"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="This module provides low-level NFC analysis, editing, and attack capabilities directly from Android, designed for security research and penetration testing."
+            android:paddingTop="6dp"
+            android:textSize="14sp" />
+
+        <!-- Status Row -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:paddingTop="16dp">
+
+            <TextView
+                android:id="@+id/nfcStatus"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Checking…"
+                android:textStyle="bold"
+                android:textSize="16sp" />
+
+            <Button
+                android:id="@+id/nfcRefresh"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Refresh" />
+        </LinearLayout>
+
+        <!-- Section: Features -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Features"
+            android:textStyle="bold"
+            android:textSize="18sp"
+            android:paddingTop="20dp" />
+
+        <TextView
+            android:id="@+id/nfcFeatures"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingTop="8dp"
+            android:textIsSelectable="true" />
+
+        <!-- Section: Limitations -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Limitations (Device)"
+            android:textStyle="bold"
+            android:textSize="18sp"
+            android:paddingTop="20dp" />
+
+        <TextView
+            android:id="@+id/nfcLimits"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingTop="8dp" />
+
+        <!-- Section: Hardware -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Internal NFC Hardware (Device)"
+            android:textStyle="bold"
+            android:textSize="18sp"
+            android:paddingTop="20dp" />
+
+        <TextView
+            android:id="@+id/nfcHardware"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingTop="8dp" />
+
+        <!-- Section: External NFC Hardware -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="External NFC Hardware"
+            android:textStyle="bold"
+            android:textSize="18sp"
+            android:paddingTop="20dp" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:paddingTop="8dp">
+
+            <TextView
+                android:id="@+id/nfcExtHardware"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Checking…"
+                android:textIsSelectable="true" />
+
+            <Button
+                android:id="@+id/nfcExtRefresh"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Refresh" />
+        </LinearLayout>         
+
+        <!-- Section: Developer -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Module Info"
+            android:textStyle="bold"
+            android:textSize="18sp"
+            android:paddingTop="20dp" />
+
+        <TextView
+            android:id="@+id/nfcDev"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textIsSelectable="true"
+            android:linksClickable="true"
+            android:autoLink="none"
+            android:paddingTop="8dp" />
+
+    </LinearLayout>
+</ScrollView>

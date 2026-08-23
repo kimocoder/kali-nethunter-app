@@ -1,6 +1,7 @@
 package com.offsec.nethunter;
 
 import android.Manifest;
+import android.app.PendingIntent;
 import android.content.BroadcastReceiver;
 import android.content.ComponentName;
 import android.content.Context;
@@ -10,6 +11,7 @@ import android.content.ServiceConnection;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.content.res.Resources;
+import android.nfc.NfcAdapter;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.IBinder;
@@ -94,11 +96,23 @@ public class AppNavHomeActivity extends AppCompatActivity implements KaliGPSUpda
     public static MenuItem customCMDitem;
     private final ShellExecuter exe = new ShellExecuter();
     private volatile boolean rootViewInitialized = false;
+
     private Thread permissionWaitThread;
+    private NfcAdapter nfcAdapter;
+    private PendingIntent nfcPendingIntent;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        nfcAdapter = NfcAdapter.getDefaultAdapter(this);
+
+        Intent nfcIntent = new Intent(this, getClass());
+        nfcIntent.addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP);
+
+        nfcPendingIntent = PendingIntent.getActivity(
+                this, 0, nfcIntent, PendingIntent.FLAG_MUTABLE
+        );
 
         // Initiate the NhPaths singleton class, and it will then keep living until the app dies.
         // Also with its sharepreference listener registered, the CHROOT_PATH variable can be updated immediately on sharepreference changes.
@@ -109,7 +123,15 @@ public class AppNavHomeActivity extends AppCompatActivity implements KaliGPSUpda
             @Override
             public void handleOnBackPressed() {
                 if (isBackPressEnabled) {
+                    FragmentManager fm = getSupportFragmentManager();
+                    if (fm.getBackStackEntryCount() > (titles.size() - 1)) {
+                        fm.popBackStack();
+                        return;
+                    }
                     if (titles.size() > 1) {
+                        if (fm.getBackStackEntryCount() > 0) {
+                            fm.popBackStack();
+                        }
                         titles.pop();
                         mTitle = titles.peek();
                         // update menu selection and action bar
@@ -399,6 +421,16 @@ public class AppNavHomeActivity extends AppCompatActivity implements KaliGPSUpda
     @Override
     protected void onResume() {
         super.onResume();
+
+        if (nfcAdapter != null) {
+            nfcAdapter.enableForegroundDispatch(
+                    this,
+                    nfcPendingIntent,
+                    null,
+                    null
+            );
+        }
+
         // If user just granted MANAGE_EXTERNAL_STORAGE from Settings, finalize the SD sync without re-running full executor
         if (copyBootFilesExecutor != null) {
             copyBootFilesExecutor.resumePendingSyncIfPermitted();
@@ -423,12 +455,45 @@ public class AppNavHomeActivity extends AppCompatActivity implements KaliGPSUpda
         }
     }
 
+    private void hideMenuItemById(int id) {
+        if (navigationView == null) return;
+        Menu menu = navigationView.getMenu();
+        MenuItem item = menu.findItem(id);
+        if (item != null) {
+            item.setVisible(false);
+        }
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        if (nfcAdapter != null) {
+            nfcAdapter.disableForegroundDispatch(this);
+        }
+    }
+
     @ColorInt
     private int safeGetColor(@ColorRes int colorRes, int fallbackArgb) {
         try {
             return ResourcesCompat.getColor(getResources(), colorRes, getTheme());
         } catch (Resources.NotFoundException e) {
             return fallbackArgb;
+        }
+    }
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+
+        if (intent == null) return;
+
+        String action = intent.getAction();
+        if (NfcAdapter.ACTION_TAG_DISCOVERED.equals(action) ||
+                NfcAdapter.ACTION_TECH_DISCOVERED.equals(action) ||
+                NfcAdapter.ACTION_NDEF_DISCOVERED.equals(action)) {
+
+            // Forward NFC intent to NFCFragment
+            NFCFragment.dispatchIntent(this, intent);
         }
     }
 
@@ -470,9 +535,12 @@ public class AppNavHomeActivity extends AppCompatActivity implements KaliGPSUpda
         prefs.edit().putBoolean("snowfall_enabled", false).apply();
 
         // inapp term enable
-        Boolean inappterm;
-        inappterm = prefs.getBoolean("inapp_terminal_enabled", false);
-        if (!inappterm) hideMenuItemIfExists(2);
+        //Boolean inappterm;
+        //inappterm = prefs.getBoolean("inapp_terminal_enabled", false);
+        //if (!inappterm) hideMenuItemById(R.id.terminal_item);
+
+        // hide kernel tab until fixed
+        hideMenuItemById(R.id.kernel_item);
 
         String model = Build.HARDWARE;
         Boolean snowfall;
@@ -480,20 +548,20 @@ public class AppNavHomeActivity extends AppCompatActivity implements KaliGPSUpda
             snowfall = prefs.getBoolean("snowfall_enabled", false);
 
             // Safe index-based hiding
-            hideMenuItemIfExists(2);
-            hideMenuItemIfExists(3);
-            hideMenuItemIfExists(4);
-            hideMenuItemIfExists(5);
-            if (model.equals("catfish") || model.equals("catshark") || model.equals("catshark-4g")) hideMenuItemIfExists(9);
-            hideMenuItemIfExists(10);
-            hideMenuItemIfExists(15);
-            hideMenuItemIfExists(16);
-            hideMenuItemIfExists(19);
-            hideMenuItemIfExists(21);
-            hideMenuItemIfExists(22);
-            hideMenuItemIfExists(23);
-            hideMenuItemIfExists(24);
-            hideMenuItemIfExists(25);
+            //hideMenuItemById(R.id.terminal_item);
+            hideMenuItemById(R.id.settings_item);
+            hideMenuItemById(R.id.kernel_item);
+            hideMenuItemById(R.id.modules_item);
+            if (model.equals("catfish") || model.equals("catshark") || model.equals("catshark-4g")) hideMenuItemById(R.id.vnc_item);
+            hideMenuItemById(R.id.audio_item);
+            hideMenuItemById(R.id.wifipumpkin_item);
+            hideMenuItemById(R.id.eviltwin_item);
+            hideMenuItemById(R.id.set_item);
+            hideMenuItemById(R.id.mpc_item);
+            hideMenuItemById(R.id.searchsploit_item);
+            hideMenuItemById(R.id.pineapple_item);
+            hideMenuItemById(R.id.gps_item);
+            hideMenuItemById(R.id.can_item);
         } else {
             snowfall = prefs.getBoolean("snowfall_enabled", true);
         }
@@ -505,10 +573,7 @@ public class AppNavHomeActivity extends AppCompatActivity implements KaliGPSUpda
 
         // Disable USB arsenal for devices without ConfigFS support
         if (!new File("/config/usb_gadget/g1").exists()) {
-            Menu menu = navigationView.getMenu();
-            if (menu.size() > 7) {
-                menu.getItem(7).setVisible(false);
-            }
+            hideMenuItemById(R.id.usbarsenal_item);
         }
 
         // Header
@@ -680,6 +745,8 @@ public class AppNavHomeActivity extends AppCompatActivity implements KaliGPSUpda
             changeFragment(fragmentManager, WPSFragment.newInstance(itemId));
         } else if (itemId == R.id.bt_item) {
             changeFragment(fragmentManager, BTFragment.newInstance(itemId));
+        } else if (itemId == R.id.nfc_item) {
+            changeFragment(fragmentManager, NFCFragment.newInstance(itemId));
         } else if (itemId == R.id.audio_item) {
             changeFragment(fragmentManager, com.offsec.nethunter.AudioFragment.newInstance(itemId));
         } else if (itemId == R.id.macchanger_item) {

@@ -5,6 +5,7 @@ This is the next-gen [Kali NetHunter application](http://store.nethunter.com/pac
 ## Setting up Android Studio
 
 You may want to build a version of the Kali NetHunter application for testing or own peace of mind.
+
 Here's a quick guide on getting started.
 
 Download [Android Studio](https://developer.android.com/studio)
