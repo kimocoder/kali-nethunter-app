@@ -305,6 +305,7 @@
     <string name="drawertitlepineapple">Pineapple Connector</string>
     <string name="drawertitlegps">Wardriving</string>
     <string name="drawertitlecan">CARsenal</string>
+    <string name="drawertitlewearhunter">WearHunter</string>
     <string name="drawertitlesettings">Settings</string>
     <string name="drawertitlekernel">Kernel</string>
     <string name="drawertitlemodules">Modules</string>
@@ -1509,4 +1510,43 @@
     <string name="terminal_button_esc">ESC</string>
     <string name="terminal_text_copy">Copy</string>
     <string name="terminal_copy_selected">Copy selected lines</string>
+
+    <!-- WearHunter -->
+    <string name="wearhunter">WearHunter</string>
+    <string name="adb_shell">ADB Shell</string>
+    <string name="adb_input">ADB Input</string>
+    <string name="adb_install">ADB Install</string>
+    <string name="about_wearhunter">About WearHunter</string>
+    <string name="wearhunter_description">This module allow you to take control over your NetHunter Watch using ADB over WiFi or Bluetooth.</string>
+    <string name="wearhunter_watch_ip_hint">Watch IP</string>
+    <string name="wearhunter_watch_ip_text">192.168.1.10</string>
+    <string name="wearhunter_watch_port_hint">Watch Port</string>
+    <string name="wearhunter_watch_port_text">5555</string>
+    <string name="btn_adb_connect">Connect</string>
+    <string name="btn_adb_disconnect">Disconnect</string>
+    <string name="btn_adb_devices">Devices</string>
+    <string name="btn_adb_setprop">setprop service.adb.tcp.port</string>
+    <string name="btn_adbd_start">ADBD Start</string>
+    <string name="btn_adbd_stop">ADBD Stop</string>
+    <string name="btn_adb_start">ADB Server Start</string>
+    <string name="btn_adb_kill">ADB Server Kill</string>
+    <string name="wearhunter_output">Output</string>
+    <string name="wearhunter_clear_output">Clear</string>
+    <string name="wearhunter_interactive_bootkali">NetHunter Watch Interactive Shell</string>
+    <string name="btn_open_nhapp">Launch NHApp</string>
+    <string name="btn_open_nhterm">Launch NHTerm</string>
+    <string name="btn_write_text">Write Text</string>
+    <string name="btn_enter_keyevent">Enter Keyevent</string>
+    <string name="wearhunter_watch_text_hint">Write Text on Watch</string>
+    <string name="wearhunter_watch_text_text">whoami</string>
+    <string name="adb_shell_cmd_hint">ADB Shell Command</string>
+    <string name="adb_shell_cmd_text">uname -a</string>
+    <string name="btn_run_adb">Run</string>
+    <string name="btn_run_as_root_adb">Run As Root</string>
+    <string name="wearhunter_apk_path_hint">APK Path</string>
+    <string name="wearhunter_apk_path">/sdcard/Hijacker-release-v1.7.apk</string>
+    <string name="wearhunter_install_apk">Install</string>
+    <string name="btn_adb_tcpip">ADB TCP/IP</string>
+    <string name="btn_adb_forward_adbhub">Forward adb-hub</string>
+
 </resources>
