@@ -179,10 +179,6 @@ public class CopyBootFilesExecutor {
         }
 
         logDebug("COPYING FILES....");
-        boolean iswatch = getActivity().getPackageManager().hasSystemFeature(PackageManager.FEATURE_WATCH);
-        if (iswatch) {
-            ActivityCompat.requestPermissions(activity, new String[]{android.Manifest.permission.WRITE_EXTERNAL_STORAGE}, 1002);
-        }
         publishProgress("Copying scripts and updating app files...");
         copyAssetFolder("etc/init.d", NhPaths.APP_INITD_PATH);
         copyAssetFolder("scripts", NhPaths.APP_SCRIPTS_PATH);
@@ -326,6 +322,10 @@ public class CopyBootFilesExecutor {
         } else {
             if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
                 return true; // install-time permission
+            }
+            boolean iswatch = getActivity().getPackageManager().hasSystemFeature(PackageManager.FEATURE_WATCH);
+            if (iswatch) {
+                ActivityCompat.requestPermissions(activity, new String[]{android.Manifest.permission.WRITE_EXTERNAL_STORAGE}, 1002);
             }
             if (ContextCompat.checkSelfPermission(activity, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
                 mainHandler.post(() -> ActivityCompat.requestPermissions(activity, new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}, 1001));
