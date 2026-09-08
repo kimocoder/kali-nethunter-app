@@ -117,16 +117,6 @@ public class CopyBootFilesExecutor {
     }
 
     private void onPreExecute() {
-        // Symlink anyway, as some phones remove symlinks after reboot
-        SymlinkScriptsToSystemBin();
-        Symlink("bootkali");
-        Symlink("bootkali_bash");
-        Symlink("bootkali_init");
-        Symlink("bootkali_login");
-        Symlink("killkali");
-        Symlink("busybox_nh");
-        Symlink("curl");
-        Symlink("iw");
         boolean filesCopied = prefs.getBoolean("files_copied", false);
         if (!filesCopied) {
             logDebug(TAG, "COPYING NEW FILES", null);
@@ -152,6 +142,16 @@ public class CopyBootFilesExecutor {
             setProgressDialog(dialog);
         } else {
             logDebug(TAG, "NO NEW FILES TO COPY. Skipping file copy.", null);
+            // Symlink anyway, as some phones remove symlinks after reboot
+            SymlinkScriptsToSystemBin();
+            Symlink("bootkali");
+            Symlink("bootkali_bash");
+            Symlink("bootkali_init");
+            Symlink("bootkali_login");
+            Symlink("killkali");
+            Symlink("busybox_nh");
+            Symlink("curl");
+            Symlink("iw");
             shouldRun = false;
         }
         if (listener != null) {
@@ -307,13 +307,27 @@ public class CopyBootFilesExecutor {
                 // Prefer per‑app All files access page; fall back to the generic one if needed
                 Runnable launch = () -> {
                     try {
-                        Toast.makeText(requireActivity().getApplicationContext(), "Please allow storage access and return to app", Toast.LENGTH_SHORT).show();
-                        Intent intent = new Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION);
-                        intent.setData(Uri.parse("package:" + activity.getPackageName()));
-                        activity.startActivity(intent);
+                        boolean iswatch = activity.getPackageManager().hasSystemFeature(PackageManager.FEATURE_WATCH);
+                        if (iswatch) {
+                            Intent intent = new Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION);
+                            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                            activity.startActivity(intent);
+                        } else {
+                            Toast.makeText(requireActivity().getApplicationContext(), "Please allow storage access and return to app", Toast.LENGTH_SHORT).show();
+                            Intent intent = new Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION);
+                            intent.setData(Uri.parse("package:" + activity.getPackageName()));
+                            activity.startActivity(intent);
+                        }
                     } catch (Exception e) {
-                        Intent intent = new Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION);
-                        activity.startActivity(intent);
+                        try {
+                            Intent intent = new Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION);
+                            if (!(activity instanceof Activity)) {
+                                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                            }
+                            activity.startActivity(intent);
+                        } catch (Exception fatalEx) {
+                            Log.e("NHPermissionCheck", "Could not resolve any storage settings activity", fatalEx);
+                        }
                     }
                 };
                 mainHandler.post(launch);
@@ -322,10 +336,6 @@ public class CopyBootFilesExecutor {
         } else {
             if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
                 return true; // install-time permission
-            }
-            boolean iswatch = getActivity().getPackageManager().hasSystemFeature(PackageManager.FEATURE_WATCH);
-            if (iswatch) {
-                ActivityCompat.requestPermissions(activity, new String[]{android.Manifest.permission.WRITE_EXTERNAL_STORAGE}, 1002);
             }
             if (ContextCompat.checkSelfPermission(activity, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
                 mainHandler.post(() -> ActivityCompat.requestPermissions(activity, new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}, 1001));
