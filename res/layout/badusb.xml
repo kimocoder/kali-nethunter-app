@@ -55,6 +55,7 @@
                         android:id="@+id/ifc"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
+                        android:text="rndis0"
                         android:autofillHints="none" />
                 </com.google.android.material.textfield.TextInputLayout>
 

@@ -421,14 +421,16 @@ public class AppNavHomeActivity extends AppCompatActivity implements KaliGPSUpda
     @Override
     protected void onResume() {
         super.onResume();
-
-        if (nfcAdapter != null) {
-            nfcAdapter.enableForegroundDispatch(
-                    this,
-                    nfcPendingIntent,
-                    null,
-                    null
-            );
+        Boolean iswatch = getBaseContext().getPackageManager().hasSystemFeature(PackageManager.FEATURE_WATCH);
+        if (!iswatch) {
+            if (nfcAdapter != null) {
+                nfcAdapter.enableForegroundDispatch(
+                        this,
+                        nfcPendingIntent,
+                        null,
+                        null
+                );
+            }
         }
 
         // If user just granted MANAGE_EXTERNAL_STORAGE from Settings, finalize the SD sync without re-running full executor
@@ -467,8 +469,11 @@ public class AppNavHomeActivity extends AppCompatActivity implements KaliGPSUpda
     @Override
     protected void onPause() {
         super.onPause();
-        if (nfcAdapter != null) {
-            nfcAdapter.disableForegroundDispatch(this);
+        Boolean iswatch = getBaseContext().getPackageManager().hasSystemFeature(PackageManager.FEATURE_WATCH);
+        if (!iswatch) {
+            if (nfcAdapter != null) {
+                nfcAdapter.disableForegroundDispatch(this);
+            }
         }
     }
 
@@ -529,18 +534,17 @@ public class AppNavHomeActivity extends AppCompatActivity implements KaliGPSUpda
         // Status bar color with safe resolver
         getWindow().setStatusBarColor(safeGetColor(R.color.darkTitle, 0xFF121212));
 
-        Boolean iswatch = getBaseContext().getPackageManager().hasSystemFeature(PackageManager.FEATURE_WATCH);
-
         // Snowfall enable 2/2
         prefs.edit().putBoolean("snowfall_enabled", false).apply();
 
         // inapp term enable
-        //Boolean inappterm;
-        //inappterm = prefs.getBoolean("inapp_terminal_enabled", false);
-        //if (!inappterm) hideMenuItemById(R.id.terminal_item);
+        Boolean inappterm;
+        inappterm = prefs.getBoolean("inapp_terminal_enabled", false);
+        if (!inappterm) hideMenuItemById(R.id.terminal_item);
 
         // hide kernel tab until fixed
-        hideMenuItemById(R.id.kernel_item);
+        //hideMenuItemById(R.id.kernel_item);
+        Boolean iswatch = getBaseContext().getPackageManager().hasSystemFeature(PackageManager.FEATURE_WATCH);
 
         String model = Build.HARDWARE;
         Boolean snowfall;
@@ -556,12 +560,14 @@ public class AppNavHomeActivity extends AppCompatActivity implements KaliGPSUpda
             hideMenuItemById(R.id.audio_item);
             hideMenuItemById(R.id.wifipumpkin_item);
             hideMenuItemById(R.id.eviltwin_item);
+            hideMenuItemById(R.id.nfc_item);
             hideMenuItemById(R.id.set_item);
             hideMenuItemById(R.id.mpc_item);
             hideMenuItemById(R.id.searchsploit_item);
             hideMenuItemById(R.id.pineapple_item);
             hideMenuItemById(R.id.gps_item);
             hideMenuItemById(R.id.can_item);
+            hideMenuItemById(R.id.wearhunter_item);
         } else {
             snowfall = prefs.getBoolean("snowfall_enabled", true);
         }
