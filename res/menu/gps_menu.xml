@@ -18,6 +18,14 @@
         android:visible="false"
         app:showAsAction="never" />
     <item
+        android:id="@+id/kismet_setup"
+        android:title="Setup"
+        app:showAsAction="never" />
+    <item
+        android:id="@+id/kismet_update"
+        android:title="Update"
+        app:showAsAction="never" />
+    <item
         android:id="@+id/action_rtlsdr"
         android:title="@string/gps_rtl_sdr"
         android:checkable="true"
