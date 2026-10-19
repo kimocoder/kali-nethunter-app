@@ -19,7 +19,6 @@ import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.CompoundButton;
 import android.widget.EditText;
-import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -46,10 +45,10 @@ import androidx.core.widget.NestedScrollView;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 import java.io.File;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -79,7 +78,6 @@ import java.util.concurrent.TimeUnit;
 public class KaliGpsServiceFragment extends Fragment implements KaliGPSUpdates.Receiver {
     private static final String TAG = "KaliGpsServiceFragment";
     private static final String ARG_SECTION_NUMBER = "section_number";
-    private final ExecutorService executor = Executors.newSingleThreadExecutor();
     private CheckBox sdrcheckbox, sdramrcheckbox, sdradsbcheckbox, mousejackcheckbox;
     private ProgressBar gpsSignalStrength;
     private NestedScrollView gpsScrollView;
@@ -98,6 +96,10 @@ public class KaliGpsServiceFragment extends Fragment implements KaliGPSUpdates.R
     private final String rtladsb = "";
     private final String mousejack = "";
     SharedPreferences sharedpreferences;
+    private final ExecutorService executor = Executors.newSingleThreadExecutor();
+
+
+    final ShellExecuter exe = new ShellExecuter();
 
     public KaliGpsServiceFragment() {
         // Required empty public constructor
@@ -128,6 +130,7 @@ public class KaliGpsServiceFragment extends Fragment implements KaliGPSUpdates.R
 
         if (context != null && android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
             if (ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_BACKGROUND_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+                Toast.makeText(requireActivity().getApplicationContext(), "Please enable location to \"Allow all the time\", then return to app", Toast.LENGTH_LONG).show();
                 backgroundLocationPermissionLauncher.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION);
             }
         }
@@ -185,15 +188,7 @@ public class KaliGpsServiceFragment extends Fragment implements KaliGPSUpdates.R
                     Toast.makeText(requireContext(), msg, Toast.LENGTH_SHORT).show();
                     return true;
                 } else if (id == R.id.action_info) {
-                    View dialogView = LayoutInflater.from(requireContext()).inflate(R.layout.gps_info_dialog, null, false);
-                    AlertDialog dialog = new AlertDialog.Builder(requireContext())
-                            .setView(dialogView)
-                            .create();
-
-                    Button closeButton = dialogView.findViewById(R.id.gps_dialog_close_button);
-                    closeButton.setOnClickListener(v -> dialog.dismiss());
-
-                    dialog.show();
+                    showWardrivingDescription();
                     return true;
                 } else if (id == R.id.action_settings) {
                     View dialogView = LayoutInflater.from(requireContext()).inflate(R.layout.gps_dialog_settings, null, false);
@@ -210,6 +205,12 @@ public class KaliGpsServiceFragment extends Fragment implements KaliGPSUpdates.R
                         id == R.id.action_rtladsb || id == R.id.action_mousejack) {
                     menuItem.setChecked(!menuItem.isChecked());
                     return true;
+                } else if (id == R.id.kismet_setup) {
+                    RunSetup();
+                    return true;
+                } else if (id == R.id.kismet_update) {
+                    RunUpdate();
+                    return true;
                 }
                 return false;
             }
@@ -224,11 +225,11 @@ public class KaliGpsServiceFragment extends Fragment implements KaliGPSUpdates.R
         gpsSignalStrength = view.findViewById(R.id.gps_signal_strength);
         gpsScrollView = view.findViewById(R.id.gps_scroll);
         switch_gpsd = view.findViewById(R.id.switch_gpsd);
-        Button button_launch_app = view.findViewById(R.id.gps_button_launch_app);
         ShellExecuter exe = new ShellExecuter();
         EditText wlan_interface = view.findViewById(R.id.wlan_interface);
         EditText bt_interface = view.findViewById(R.id.bt_interface);
         View watch_padding = view.findViewById(R.id.watch_padding);
+        Button button_launch_app = view.findViewById(R.id.gps_button_launch_app);
 
         //Watch
         Boolean iswatch = sharedpreferences.getBoolean("running_on_wearos", false);
@@ -242,6 +243,17 @@ public class KaliGpsServiceFragment extends Fragment implements KaliGPSUpdates.R
         if (!isnexmon.isEmpty()) {
             Toast.makeText(requireActivity().getApplicationContext(), "Nexmon firmware detected. Make sure monitor mode is enabled.", Toast.LENGTH_LONG).show();
             nexmonPrefix="LD_PRELOAD=/lib/libnexmonkali.so ";
+        }
+
+        // First run
+        boolean kismetInstalled = isKismetInstalled();
+        if (!kismetInstalled) {
+            SetupDialog();
+        }
+        boolean isFirstRun = sharedpreferences.getBoolean("wardriving_first_run", true);
+        if (isFirstRun) {
+            showWardrivingDescription();
+            sharedpreferences.edit().putBoolean("wardriving_first_run", false).apply();
         }
 
         // Initialize checkboxes
@@ -308,7 +320,7 @@ public class KaliGpsServiceFragment extends Fragment implements KaliGPSUpdates.R
                 String btiface = bt_interface != null ? bt_interface.getText().toString() : "";
                 btiface = !btiface.isEmpty() ? "source=" + btiface + "\n" : "";
 
-                String conf = "log_template=%p/%n\nlog_prefix=/captures/kismet/\ngps=gpsd:host=localhost,port=2947\n" +
+                String conf = "log_template=%p/%n\nlog_prefix=/root/captures/\ngps=gpsd:host=localhost,port=2947\n" +
                         wlaniface +
                         btiface +
                         (sdrcheckbox != null && sdrcheckbox.isChecked() ? "source=rtl433-0\n" : "") +
@@ -317,8 +329,8 @@ public class KaliGpsServiceFragment extends Fragment implements KaliGPSUpdates.R
                         (mousejackcheckbox != null && mousejackcheckbox.isChecked() ? "source=mousejack:name=nRF,channel_hoprate=100/sec\n" : "");
 
                 executor.execute(() -> {
-                    exe.RunAsRoot(new String[]{"echo \"" + conf + "\" > " + NhPaths.SD_PATH + "/kismet_site.conf"});
-                    exe.RunAsRoot(new String[]{NhPaths.APP_SCRIPTS_PATH + "/bootkali custom_cmd mv /sdcard/kismet_site.conf /etc/kismet/"});
+                    exe.RunAsRoot(new String[]{"echo \"" + conf + "\" > " + NhPaths.APP_SD_FILES_PATH + "/kismet_site.conf"});
+                    exe.RunAsRoot(new String[]{NhPaths.APP_SCRIPTS_PATH + "/bootkali custom_cmd mv /sdcard/nh_files/kismet_site.conf /etc/kismet/"});
                 });
                 Toast.makeText(requireActivity().getApplicationContext(), "Starting terminal.. Web UI will be available in browser at 127.0.0.1:2501\"", Toast.LENGTH_LONG).show();
                 wantKismet = true;
@@ -424,6 +436,10 @@ public class KaliGpsServiceFragment extends Fragment implements KaliGPSUpdates.R
             setCheckedQuietly(switch_gps_provider, false);
         }
 
+        // check if kismet is already running
+        Button button_launch_app = getView().findViewById(R.id.gps_button_launch_app);
+        if (isKismetRunning()) button_launch_app.setText(R.string.stop_kismet);
+
         // check if gpsd is already running
         check_gpsd();
     }
@@ -453,6 +469,9 @@ public class KaliGpsServiceFragment extends Fragment implements KaliGPSUpdates.R
     @Override
     public void onPositionUpdate(String nmeaSentences) {
         CharSequence charSequence = gpsTextView.getText();
+        if (charSequence == null || charSequence.length() == 0) {
+            return;
+        }
         int maxLines = 20;
         int index = TextUtils.lastIndexOf(charSequence, '\n', charSequence.length() - 1, maxLines);
         if (index > 0) {
@@ -496,7 +515,8 @@ public class KaliGpsServiceFragment extends Fragment implements KaliGPSUpdates.R
 
     private void startKismet(String nexmonPrefix) {
         try {
-            run_cmd("echo -ne \"\\033]0;Kismet\\007\" && clear;" + nexmonPrefix + "/usr/bin/start-kismet; exit");
+            run_cmd("echo -ne \"\\033]0;Kismet\\007\" && cmp --silent /sdcard/nh_files/modules/start-kismet /usr/bin/start-kismet || cp /sdcard/nh_files/modules/start-kismet /usr/bin/start-kismet; " +
+                    "clear;" + nexmonPrefix + "/usr/bin/start-kismet; exit");
         } catch (Exception e) {
             NhPaths.showMessage(context, getString(R.string.toast_install_terminal));
         }
@@ -539,7 +559,6 @@ public class KaliGpsServiceFragment extends Fragment implements KaliGPSUpdates.R
 
     private void disableSystemGps() {
         try {
-            ShellExecuter exe = new ShellExecuter();
             if (android.os.Build.VERSION.SDK_INT >= 29) {
                 exe.RunAsRoot(new String[]{"settings put secure location_mode 0"});
             } else {
@@ -549,6 +568,68 @@ public class KaliGpsServiceFragment extends Fragment implements KaliGPSUpdates.R
                 });
             }
         } catch (Throwable t) { /* ignore */ }
+    }
+
+    // info
+    private void showWardrivingDescription() {
+        MaterialAlertDialogBuilder builder = new MaterialAlertDialogBuilder(requireActivity(), R.style.DialogStyleCompat);
+        builder.setTitle("Wardriving info");
+        builder.setMessage(getString(R.string.gps_description));
+        builder.setPositiveButton("OK", null);
+        builder.show();
+    }
+
+    // First setup
+    public void SetupDialog() {
+        MaterialAlertDialogBuilder builder = new MaterialAlertDialogBuilder(requireActivity(), R.style.DialogStyleCompat);
+        builder.setTitle("Welcome to Wardriving!");
+        builder.setMessage("You have missing packages to run kismet. Install them now?");
+        builder.setPositiveButton("Install", (dialog, which) -> {
+            RunSetup();
+        });
+        builder.show();
+    }
+
+    public void RunSetup() {
+        String cmd = "echo -ne \"\\033]0;Kismet Setup\\007\" && clear && apt update && apt install kismet gpsd python3-venv -y; " +
+                "if [ ! -f /root/venv/bin/kismet_analyzer_aplist ];then cd /root && python3 -m venv venv && venv/bin/pip install setuptools kismet-analyzer; else echo 'Kismet analyzer is already installed!'; fi; " +
+                "echo 'Done! Exiting..' && exit";
+        run_cmd(cmd);
+    }
+    public void RunUpdate() {
+        String cmd = "echo -ne \"\\033]0;Kismet Update\\007\" && clear && apt update && apt install kismet gpsd python3-venv -y; " +
+                "if [ -f /root/venv/bin/kismet_analyzer_aplist ];then cd /root && venv/bin/pip install -U setuptools kismet-analyzer; else echo 'Kismet analyzer is not installed yet! Please run setup first.'; fi; " +
+                "echo 'Done! Exiting..' && exit";
+        run_cmd(cmd);
+    }
+
+    private boolean isKismetInstalled() {
+        try {
+            String out = exe.RunAsChrootOutput(
+                    "[[ -f /usr/bin/kismet && -f /usr/sbin/gpsd && -f /root/venv/bin/kismet_analyzer_aplist ]] && echo 1 || echo 0");
+            String v = (out == null) ? "" : out.trim();
+            if ("1".equals(v)) {
+                return true;
+            }
+        } catch (Exception e) {
+        }
+        return false;
+    }
+
+    private boolean isKismetRunning() {
+        try {
+            String out = exe.RunAsChrootOutput(
+                    "[[ \"`pidof kismet`\" != \"\" ]] && echo 1 || echo 0");
+            String v = (out == null) ? "" : out.trim();
+            if ("1".equals(v)) {
+                //Log.d(TAG, "isWp3Installed: chroot probe -> true");
+                return true;
+            }
+            // Log.d(TAG, "isWp3Installed: chroot probe -> false (v='" + v + "')");
+        } catch (Exception e) {
+            //Log.w(TAG, "isWp3Installed: chroot probe failed", e);
+        }
+        return false;
     }
 
     // NH_PATCH_WD_STOP
@@ -574,12 +655,12 @@ public class KaliGpsServiceFragment extends Fragment implements KaliGPSUpdates.R
                     try {
                         if (gpsTextView != null) {
                             gpsTextView.append("Kismet stopped.\n");
-                            gpsTextView.append("Capture files saved to /sdcard/captures.\n");
+                            gpsTextView.append("Capture file saved to /sdcard/kismet_captures.\n");
                             if (iswatch) {
                                 final MaterialAlertDialogBuilder remove_session_files = new MaterialAlertDialogBuilder(requireActivity(), R.style.DialogStyleCompat);
                                 remove_session_files.setMessage("Erase all stored Kismet session files in chroot?");
                                 remove_session_files.setPositiveButton("Yes", (dialogInterface, i) -> {
-                                    new ShellExecuter().RunAsChrootOutput("wipe -f -i -r /captures/kismet/Kismet-*");
+                                    new ShellExecuter().RunAsChrootOutput("while pgrep -x \"kismet\" >/dev/null; do sleep 1; done; wipe -f -i -r /root/captures/Kismet-*");
                                     dialogInterface.cancel();
                                     gpsTextView.append("Kismet session files wiped in chroot.\n");
                                     new ShellExecuter().RunAsRoot(new String[]{"pkill start-kismet"});

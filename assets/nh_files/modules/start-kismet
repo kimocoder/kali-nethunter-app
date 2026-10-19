@@ -1,0 +1,78 @@
+#!/bin/bash
+
+#adaptor=$(ip addr | grep wlan1)
+NOW=$(date +"%d%m%y-%H%M%S")
+[ ! -d /root/captures ] && mkdir -p /root/captures
+
+f_check_dbus(){
+if DBUS=$(pgrep dbus)
+then
+        echo "Dbus is running: $DBUS"
+else
+        echo "Dbus is not running. Staring..."
+        service dbus start
+fi
+}
+
+f_kismet(){
+    kismet -t Kismet-$NOW.kismet #; --use-gpsd-gps # -t = Title of logfile
+}
+
+f_kismetdb_to_kml(){
+    # export kml of all wireless data and copy files to sdcard
+    kismetdb_to_kml --in /root/captures/Kismet-$NOW.kismet --out "/root/captures/Kismet-$NOW.kml"
+}
+
+f_kismetdb_to_kml_advanced(){
+    # export kml of all wireless data and copy files to sdcard
+    /root/venv/bin/kismet_analyzer_aplist --in "/root/captures/Kismet-$NOW.kismet" --kml --out "/root/captures/Kismet-$NOW.kml"
+    kismetdb_to_kml --in /root/captures/Kismet-$NOW.kismet --out "/root/captures/Kismet-$NOW.kml"
+}
+
+f_kismet_save(){
+
+echo "Copying capture files to /sdcard"
+if [ -f "/root/captures/Kismet-$NOW.kml" ]; then
+    [ ! -d "/sdcard/kismet_captures" ] && mkdir "/sdcard/kismet_captures"
+    cp "/root/captures/Kismet-$NOW.kml" "/sdcard/kismet_captures/"
+    echo "Successfully copied the result to /sdcard/kismet_captures/Kismet-$NOW.kml"
+else
+    echo "No results to copy!"
+fi
+sleep 3
+
+# option to erase files
+read -p "Would you like to secure erase all Kismet session files in /captures folder inside chroot? (y/n): " ERASEKISMET
+if [ "$ERASEKISMET" == "y" ]; then
+    echo "Removing capture files..."
+    wipe -f -i -r /root/captures/Kismet-*
+fi
+}
+
+f_cleanup(){
+pkill gpsd
+pkill socat
+rm -f /tmp/gps_out
+rm -f /tmp/gps
+}
+
+sleep 5
+
+#  She packed my bags last night pre-flight
+#  Zero hour nine a.m.
+
+f_check_dbus
+
+#  And I think it's gonna be a long long time...
+
+f_kismet
+if [ -f /root/venv/bin/kismet_analyzer_aplist ]; then
+     echo "Using kismet_analyzer to export results with more details"
+     f_kismetdb_to_kml_advanced
+else f_kismetdb_to_kml
+fi
+f_kismet_save
+
+# Till touch down brings me round again to find
+
+f_cleanup
