@@ -451,7 +451,7 @@
     <string name="switch_gpsd">GPSD in chroot</string>
     <string name="switch_nexmon">Nexmon support</string>
     <string name="gps_button_launch_app">Launch %s in NH Terminal</string>
-    <string name="gps_description">Converts your GPS to NMEA then provides to Kali chroot. Perfect for wardriving with Kismet or just a generic GPS server for Kali. Select your desired datasources. Make sure your wireless interface is in monitor mode before starting Kismet. Internal wireless interfaces can also be used thanks to the monitor mode by QCACLD-3.0 driver.</string>
+    <string name="gps_description">Find nearby devices with Kismet or use as a generic GPS server for Kali. Select your desired datasources. Nexmon and QCACLD-3.0 drivers are also supported (EXPERIMENTAL). Make sure monitor mode for internal wireless interfaces, or bluetooth interface is enabled before starting Kismet. Import the results to an app that supports colored pins, eg. Organic Maps.</string>
     <string name="gps_help">You may need to give NetHunter permissions to GPS. Go to Settings > Apps > NetHunter > Permissions.</string>
     <string name="loading_wait">Loading wait…</string>
     <string name="loading_file">Loading…  FILE: %s</string>

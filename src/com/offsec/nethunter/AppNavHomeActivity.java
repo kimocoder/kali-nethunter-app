@@ -11,6 +11,7 @@ import android.content.ServiceConnection;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.content.res.Resources;
+import android.graphics.Color;
 import android.nfc.NfcAdapter;
 import android.os.Build;
 import android.os.Bundle;
@@ -195,6 +196,14 @@ public class AppNavHomeActivity extends AppCompatActivity implements KaliGPSUpda
         }
         // initiate prefs.
         prefs = getSharedPreferences(BuildConfig.APPLICATION_ID, Context.MODE_PRIVATE);
+
+        Boolean iswatch = getBaseContext().getPackageManager().hasSystemFeature(PackageManager.FEATURE_WATCH);
+
+        // Changelog first run
+        boolean isFirstRun = prefs.getBoolean("changelog_first_run", true);
+        if (isFirstRun && !iswatch) {
+            showChangelog();
+        }
 
         // Start copying the app files to the corresponding path.
         copyBootFilesExecutor = new CopyBootFilesExecutor(getApplicationContext(), this);
@@ -511,6 +520,25 @@ public class AppNavHomeActivity extends AppCompatActivity implements KaliGPSUpda
         }
     }
 
+    private void showChangelog() {
+        MaterialAlertDialogBuilder builder = new MaterialAlertDialogBuilder(this, R.style.DialogStyleCompat);
+        int versionCode = BuildConfig.VERSION_CODE;
+        android.widget.TextView messageView = new android.widget.TextView(this);
+        android.widget.ScrollView scrollView = new android.widget.ScrollView(this);
+
+        builder.setTitle("What's new");
+        String latest = exe.RunAsRootOutput("curl -fs https://gitlab.com/kalilinux/nethunter/store/nethunter-store-data/-/raw/master/metadata/com.offsec.nethunter/en-US/changelogs/" + versionCode + ".txt");
+        messageView.setText(latest);
+        messageView.setTextSize(14);
+        messageView.setPadding(30, 30, 30, 10);
+        scrollView.addView(messageView);
+        builder.setView(scrollView);
+        builder.setPositiveButton("OK", (dialogInterface, i) -> {
+            prefs.edit().putBoolean("changelog_first_run", false).apply();
+        });
+        if (!latest.isEmpty()) builder.show();
+    }
+
     private void setRootView() {
         setContentView(R.layout.base_layout);
 
@@ -542,10 +570,7 @@ public class AppNavHomeActivity extends AppCompatActivity implements KaliGPSUpda
         inappterm = prefs.getBoolean("inapp_terminal_enabled", false);
         if (!inappterm) hideMenuItemById(R.id.terminal_item);
 
-        // hide kernel tab until fixed
-        //hideMenuItemById(R.id.kernel_item);
         Boolean iswatch = getBaseContext().getPackageManager().hasSystemFeature(PackageManager.FEATURE_WATCH);
-
         String model = Build.HARDWARE;
         Boolean snowfall;
         if (iswatch) {

@@ -10,7 +10,6 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.os.Build;
 import android.os.Bundle;
-import android.os.Environment;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.Menu;
@@ -18,9 +17,6 @@ import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
-import android.webkit.WebSettings;
-import android.webkit.WebView;
-import android.webkit.WebViewClient;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
@@ -40,8 +36,6 @@ import com.offsec.nethunter.utils.ShellExecuter;
 
 import java.io.File;
 import java.io.IOException;
-import java.io.InputStream;
-import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.Objects;
 import java.util.regex.Matcher;
@@ -117,7 +111,7 @@ public class WifipumpkinFragment extends Fragment {
         CheckBox PreviewCheckbox = rootView.findViewById(R.id.preview_checkbox);
 
         // First run;
-        String packages = exe.RunAsChrootOutput("if [[ -f /usr/bin/wifipumpkin3 || -f /usr/bin/dnschef ]];then echo Good;else echo Nope;fi");
+        String packages = exe.RunAsChrootOutput("if [[ -f /usr/bin/wifipumpkin3 && -f /usr/bin/dnschef ]];then echo Good;else echo Nope;fi");
 
         // if (!setupwp3done.equals(true))
         if (packages.equals("Nope")) SetupDialog();
@@ -142,7 +136,6 @@ public class WifipumpkinFragment extends Fragment {
             refresh_wp3_templates(rootView);
         } else {
             setupTemplatesSpinnerEmpty(rootView);
-            SetupDialog();
         }
         Spinner TemplatesSpinner = rootView.findViewById(R.id.templates);
 
@@ -283,7 +276,7 @@ public class WifipumpkinFragment extends Fragment {
     private boolean isWp3Installed() {
         try {
             String out = exe.RunAsChrootOutput(
-                    "[[ -f /usr/bin/wifipumpkin3 || -f /usr/bin/dnschef ]] && echo 1 || echo 0");
+                    "[[ -f /usr/bin/wifipumpkin3 && -f /usr/bin/dnschef ]] && echo 1 || echo 0");
             String v = (out == null) ? "" : out.trim();
             if ("1".equals(v)) {
                 //Log.d(TAG, "isWp3Installed: chroot probe -> true");
@@ -336,15 +329,10 @@ public class WifipumpkinFragment extends Fragment {
     public void SetupDialog() {
         MaterialAlertDialogBuilder builder = new MaterialAlertDialogBuilder(requireActivity(), R.style.DialogStyleCompat);
         sharedpreferences = activity.getSharedPreferences("com.offsec.nethunter", Context.MODE_PRIVATE);
-        builder.setTitle("Welcome to Wifipumpkin3!");
-        builder.setMessage("You have missing packages. Install them now?");
+        builder.setTitle("Welcome to Wifipumpkin!");
+        builder.setMessage("You have missing packages to run wifipumpkin3. Install them now?");
         builder.setPositiveButton("Install", (dialog, which) -> {
             RunSetup();
-            sharedpreferences.edit().putBoolean("wp3_setup_done", true).apply();
-        });
-        builder.setNegativeButton("Disable message", (dialog, which) -> {
-            dialog.dismiss();
-            sharedpreferences.edit().putBoolean("wp3_setup_done", true).apply();
         });
         builder.show();
     }
@@ -356,7 +344,6 @@ public class WifipumpkinFragment extends Fragment {
                 "cp -r /root/.config/wifipumpkin3/config/templates/* /usr/share/wifipumpkin3/config/templates/; else echo 'No templates directory in /sdcard/nh_files'; fi; " +
                 "update-alternatives --set iptables /usr/sbin/iptables-legacy; iptables-save | grep -v \"bpf\" > /sdcard/iptables-default; if ! grep -B1 \"# Completed\" /sdcard/iptables-default | head -n1 | grep -q \"COMMIT\"; then sed -i '/^# Completed/i COMMIT' /sdcard/iptables-default; fi; exit";
         run_cmd(cmd);
-        sharedpreferences.edit().putBoolean("wp3_setup_done", true).apply();
     }
     public void RunUpdate() {
         sharedpreferences = activity.getSharedPreferences("com.offsec.nethunter", Context.MODE_PRIVATE);
@@ -365,7 +352,6 @@ public class WifipumpkinFragment extends Fragment {
                 "cp -r /root/.config/wifipumpkin3/config/templates/* /usr/share/wifipumpkin3/config/templates/; else echo 'No templates directory in /sdcard/nh_files'; fi; " +
                 "update-alternatives --set iptables /usr/sbin/iptables-legacy; iptables-save | grep -v \"bpf\" > /sdcard/iptables-default;  if ! grep -B1 \"# Completed\" /sdcard/iptables-default | head -n1 | grep -q \"COMMIT\"; then sed -i '/^# Completed/i COMMIT' /sdcard/iptables-default; fi; exit";
         run_cmd(cmd);
-        sharedpreferences.edit().putBoolean("wp3_setup_done", true).apply();
     }
 
 
@@ -606,6 +592,13 @@ public class WifipumpkinFragment extends Fragment {
         }
     }
 
+    @Override
+    public void onResume() {
+        super.onResume();
+        Log.d(TAG, "onResume");
+        refresh_wp3_templates(getView());
+    }
+
     public static class DhcpdFragment extends Fragment {
         final ShellExecuter exe = new ShellExecuter();
         private Context context;
@@ -673,204 +666,6 @@ public class WifipumpkinFragment extends Fragment {
                 EditText source1 = getView().findViewById(R.id.source);
                 String newSource = source1.getText().toString();
                 exe.SaveFileContents(newSource, configFilePath);
-                NhPaths.showMessage(context, "Source updated");
-            });
-            return rootView;
-        }
-    }
-
-    public static class ManaNatFullFragment extends Fragment {
-        private Context context;
-        private String configFilePath;
-
-        @Override
-        public void onCreate(@Nullable Bundle savedInstanceState) {
-            super.onCreate(savedInstanceState);
-            context = getContext();
-            if (Build.VERSION.SDK_INT == Build.VERSION_CODES.LOLLIPOP) {
-                configFilePath = NhPaths.CHROOT_PATH() + "/usr/share/mana-toolkit/run-mana/start-nat-full-lollipop.sh";
-            }
-        }
-
-        @Override
-        public View onCreateView(LayoutInflater inflater, ViewGroup container,
-                                 Bundle savedInstanceState) {
-            View rootView = inflater.inflate(R.layout.source_short, container, false);
-            TextView desc = rootView.findViewById(R.id.description);
-
-            desc.setText(getResources().getString(R.string.mana_nat_full));
-
-            EditText source = rootView.findViewById(R.id.source);
-            ShellExecuter exe = new ShellExecuter();
-            exe.ReadFile_ASYNC(configFilePath, source);
-            Button button = rootView.findViewById(R.id.update);
-            button.setOnClickListener(v -> {
-                if (getView() == null) {
-                    return;
-                }
-                EditText source1 = getView().findViewById(R.id.source);
-                String newSource = source1.getText().toString();
-                ShellExecuter exe1 = new ShellExecuter();
-                exe1.SaveFileContents(newSource, configFilePath);
-                NhPaths.showMessage(context, "Source updated");
-            });
-            return rootView;
-        }
-    }
-
-    public static class ManaNatSimpleFragment extends Fragment {
-        private Context context;
-        private String configFilePath;
-
-        @Override
-        public void onCreate(@Nullable Bundle savedInstanceState) {
-            super.onCreate(savedInstanceState);
-            context = getContext();
-            if (Build.VERSION.SDK_INT == Build.VERSION_CODES.LOLLIPOP) {
-                configFilePath = NhPaths.CHROOT_PATH() + "/usr/share/mana-toolkit/run-mana/start-nat-simple-lollipop.sh";
-            }
-        }
-
-        @Override
-        public View onCreateView(LayoutInflater inflater, ViewGroup container,
-                                 Bundle savedInstanceState) {
-            View rootView = inflater.inflate(R.layout.source_short, container, false);
-
-            String description = getResources().getString(R.string.mana_nat_simple);
-            TextView desc = rootView.findViewById(R.id.description);
-            desc.setText(description);
-
-            EditText source = rootView.findViewById(R.id.source);
-            ShellExecuter exe = new ShellExecuter();
-            exe.ReadFile_ASYNC(configFilePath, source);
-
-            Button button = rootView.findViewById(R.id.update);
-            button.setOnClickListener(v -> {
-                if (getView() == null) {
-                    return;
-                }
-                EditText source1 = getView().findViewById(R.id.source);
-                String newSource = source1.getText().toString();
-                ShellExecuter exe1 = new ShellExecuter();
-                exe1.SaveFileContents(newSource, configFilePath);
-                NhPaths.showMessage(context, "Source updated");
-            });
-            return rootView;
-        }
-    }
-
-    public static class ManaNatBettercapFragment extends Fragment {
-        private Context context;
-        private String configFilePath;
-
-        @Override
-        public void onCreate(@Nullable Bundle savedInstanceState) {
-            super.onCreate(savedInstanceState);
-            context = getContext();
-            configFilePath = NhPaths.CHROOT_PATH() + "/usr/bin/start-nat-transproxy-lollipop.sh";
-        }
-
-        @Override
-        public View onCreateView(LayoutInflater inflater, ViewGroup container,
-                                 Bundle savedInstanceState) {
-            View rootView = inflater.inflate(R.layout.source_short, container, false);
-
-            String description = getResources().getString(R.string.mana_bettercap_description);
-            TextView desc = rootView.findViewById(R.id.description);
-            desc.setText(description);
-
-            EditText source = rootView.findViewById(R.id.source);
-            ShellExecuter exe = new ShellExecuter();
-            exe.ReadFile_ASYNC(configFilePath, source);
-
-            Button button = rootView.findViewById(R.id.update);
-            button.setOnClickListener(v -> {
-                if (getView() == null) {
-                    return;
-                }
-                EditText source1 = getView().findViewById(R.id.source);
-                String newSource = source1.getText().toString();
-                ShellExecuter exe1 = new ShellExecuter();
-                exe1.SaveFileContents(newSource, configFilePath);
-                NhPaths.showMessage(context, "Source updated");
-            });
-            return rootView;
-        }
-    }
-
-    public static class BdfProxyConfigFragment extends Fragment {
-        private Context context;
-        private String configFilePath;
-
-        @Override
-        public void onCreate(@Nullable Bundle savedInstanceState) {
-            super.onCreate(savedInstanceState);
-            context = getContext();
-            configFilePath = NhPaths.APP_SD_FILES_PATH + "/configs/bdfproxy.cfg";
-        }
-
-        @Override
-        public View onCreateView(LayoutInflater inflater, ViewGroup container,
-                                 Bundle savedInstanceState) {
-            View rootView = inflater.inflate(R.layout.source_short, container, false);
-
-            String description = getResources().getString(R.string.bdfproxy_cfg);
-            TextView desc = rootView.findViewById(R.id.description);
-            desc.setText(description);
-            // use the good one?
-            Log.d("BDFPATH", configFilePath);
-            EditText source = rootView.findViewById(R.id.source);
-            ShellExecuter exe = new ShellExecuter();
-            exe.ReadFile_ASYNC(configFilePath, source);
-
-            Button button = rootView.findViewById(R.id.update);
-            button.setOnClickListener(v -> {
-                if (getView() == null) {
-                    return;
-                }
-                EditText source1 = getView().findViewById(R.id.source);
-                String newSource = source1.getText().toString();
-                ShellExecuter exe1 = new ShellExecuter();
-                exe1.SaveFileContents(newSource, configFilePath);
-                NhPaths.showMessage(context, "Source updated");
-            });
-            return rootView;
-        }
-    }
-
-    public static class ManaStartNatSimpleBdfFragment extends Fragment {
-        private Context context;
-        private String configFilePath;
-
-        @Override
-        public void onCreate(@Nullable Bundle savedInstanceState) {
-            super.onCreate(savedInstanceState);
-            context = getContext();
-            if (Build.VERSION.SDK_INT == Build.VERSION_CODES.LOLLIPOP) {
-                configFilePath = NhPaths.CHROOT_PATH() + "/usr/share/mana-toolkit/run-mana/start-nat-simple-bdf-lollipop.sh";
-            }
-        }
-
-        @Override
-        public View onCreateView(LayoutInflater inflater, ViewGroup container,
-                                 Bundle savedInstanceState) {
-            View rootView = inflater.inflate(R.layout.source_short, container, false);
-
-            String description = getResources().getString(R.string.mana_nat_simple_bdf);
-            TextView desc = rootView.findViewById(R.id.description);
-            desc.setText(description);
-            EditText source = rootView.findViewById(R.id.source);
-            ShellExecuter exe = new ShellExecuter();
-            exe.ReadFile_ASYNC(configFilePath, source);
-            Button button = rootView.findViewById(R.id.update);
-            button.setOnClickListener(v -> {
-                if (getView() == null) {
-                    return;
-                }
-                EditText source1 = getView().findViewById(R.id.source);
-                String newSource = source1.getText().toString();
-                ShellExecuter exe1 = new ShellExecuter();
-                exe1.SaveFileContents(newSource, configFilePath);
                 NhPaths.showMessage(context, "Source updated");
             });
             return rootView;
