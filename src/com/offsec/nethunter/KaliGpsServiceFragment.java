@@ -592,7 +592,7 @@ public class KaliGpsServiceFragment extends Fragment implements KaliGPSUpdates.R
 
     public void RunSetup() {
         String cmd = "echo -ne \"\\033]0;Kismet Setup\\007\" && clear && apt update && apt install kismet gpsd python3-venv -y; " +
-                "if [ ! -f /root/venv/bin/kismet_analyzer_aplist ];then cd /root && python3 -m venv venv && venv/bin/pip install setuptools kismet-analyzer; else echo 'Kismet analyzer is already installed!'; fi; " +
+                "if [ ! -f /root/venv/bin/kismet_analyzer_aplist ];then cd /root && python3 -m venv venv && venv/bin/pip install 'setuptools<82.0.0' 'fastkml<1.0' kismet-analyzer; else echo 'Kismet analyzer is already installed!'; fi; " +
                 "echo 'Done! Exiting..' && exit";
         run_cmd(cmd);
     }

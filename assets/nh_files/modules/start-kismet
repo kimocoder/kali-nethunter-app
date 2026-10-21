@@ -26,7 +26,6 @@ f_kismetdb_to_kml(){
 f_kismetdb_to_kml_advanced(){
     # export kml of all wireless data and copy files to sdcard
     /root/venv/bin/kismet_analyzer_aplist --in "/root/captures/Kismet-$NOW.kismet" --kml --out "/root/captures/Kismet-$NOW.kml"
-    kismetdb_to_kml --in /root/captures/Kismet-$NOW.kismet --out "/root/captures/Kismet-$NOW.kml"
 }
 
 f_kismet_save(){
@@ -34,8 +33,8 @@ f_kismet_save(){
 echo "Copying capture files to /sdcard"
 if [ -f "/root/captures/Kismet-$NOW.kml" ]; then
     [ ! -d "/sdcard/kismet_captures" ] && mkdir "/sdcard/kismet_captures"
-    cp "/root/captures/Kismet-$NOW.kml" "/sdcard/kismet_captures/"
-    echo "Successfully copied the result to /sdcard/kismet_captures/Kismet-$NOW.kml"
+    cp "/root/captures/Kismet-$NOW.kml*" "/sdcard/kismet_captures/"
+    echo "Successfully copied the result to /sdcard/kismet_captures"
 else
     echo "No results to copy!"
 fi
