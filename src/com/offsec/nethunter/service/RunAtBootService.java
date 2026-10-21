@@ -111,7 +111,7 @@ public class RunAtBootService extends Service {
             hashMap.put("CHROOT", "autostart disabled.");
         }
 
-        String resultMsg = "Boot completed.\nEveryting is fine and Chroot has been started!";
+        String resultMsg = "Boot completed.\nChroot has been started!";
         for (Map.Entry<String, String> entry : hashMap.entrySet()) {
             if (!entry.getValue().equals(isOK)) {
                 if (chroot_auto) resultMsg = "Make sure the above requirements are met.";
